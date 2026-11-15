@@ -667,7 +667,7 @@ async function onMedSubmit(e){
     showMessage('Препарат сохранён и повторно прочитан из локальной базы.');
   }catch(err){showMessage(toError(err),'error');}
 }
-async function exportBackup(){try{const backup=await createBackup();downloadFile(`PAE04-SYNTHETIC-BACKUP-${today()}.json`,new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));showMessage('Копия сформирована и передана браузеру на скачивание. Проверьте наличие файла в «Загрузках».')}catch(e){showMessage(toError(e),'error')}}
+async function exportBackup(){try{const backup=await createBackup();downloadFile(`PAE04-PERSONAL-BACKUP-${today()}.json`,new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));showMessage('Копия сформирована и передана браузеру на скачивание. Проверьте наличие файла в «Загрузках».')}catch(e){showMessage(toError(e),'error')}}
 let backupVerifySequence=0;
 async function verifyDownloadedBackup(e){
   const sequence=++backupVerifySequence,view=$('verify-result');
@@ -691,7 +691,7 @@ async function verifyDownloadedBackup(e){
     if(sequence!==backupVerifySequence)return;
     safetyExternalBackupVerified(expected,canonical(current)===canonical(normalized));
     const details=STORE_NAMES.map(name=>name+': '+normalized[name].length).join(' · ');
-    view.append(node('p','verify-pass','PASS · SHA-256 совпадает · '+total+' учебных записей'),
+    view.append(node('p','verify-pass','PASS · SHA-256 совпадает · '+total+' записей'),
       node('p','form-hint','Файл: '+file.name+' · '+details),
       node('p','form-hint','Файл проверен без импорта. Это не шифрование. Защитите копию от посторонних.'));
   }catch(err){if(sequence!==backupVerifySequence)return;safetyWrite('safety-copy-status','Выбранный JSON отклонён: актуальная внешняя копия не подтверждена','safety-bad');view.append(node('p','verify-fail','FAIL · '+toError(err)));}
@@ -740,7 +740,7 @@ async function downloadImportCheckpoint(){
     const backup=await createBackup();
     const baselineHash=await sha256(backup.data);
     if(pendingImport!==selected)return; // file selection changed during async read
-    downloadFile(`PAE04-SYNTHETIC-PREIMPORT-CHECKPOINT-${today()}.json`,new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));
+    downloadFile(`PAE04-PERSONAL-PREIMPORT-CHECKPOINT-${today()}.json`,new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));
     selected.checkpoint={baselineHash,backupHash:backup.sha256};
     $('checkpoint-ack').disabled=false;
     $('checkpoint-status').textContent='Копия с SHA-256 '+backup.sha256.slice(0,12)+'… передана браузеру. Проверьте, что файл действительно сохранён вне PWA, затем подтвердите ниже.';
@@ -771,7 +771,7 @@ async function applyImport(){
     validateBackupData(data);
     const plan=prepareMerge(data);
     if(plan.conflicts)throw Error('Обнаружены конфликты, импорт остановлен');
-    if(!confirm(`Импортировать ${plan.fresh} новых учебных записей из формата v${version}?\nБез удаления старых записей. Защитная копия уже сформирована.`))return;
+    if(!confirm(`Импортировать ${plan.fresh} новых записей из формата v${version}?\nБез удаления старых записей. Защитная копия уже сформирована.`))return;
     if(pendingImport!==selected)return;
     const count=await atomicMerge(data);
     const verifyAfterImport=await readBackupSnapshot();
