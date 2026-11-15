@@ -71,7 +71,7 @@
         </section>
 
         <section class="page" id="page-backup" aria-labelledby="backup-title">
-          <div class="page-head"><div><p class="eyebrow">ЛОКАЛЬНЫЕ ДАННЫЕ</p><h1 id="backup-title">Резервные копии</h1><p class="muted">Экспорт, проверка SHA-256 и восстановление отсутствующих записей.</p></div><span class="tag">JSON · SHA-256</span></div>
+          <div class="page-head"><div><p class="eyebrow">ЛОКАЛЬНЫЕ ДАННЫЕ</p><h1 id="backup-title">Резервные копии</h1><p class="muted">Экспорт, проверка SHA-256 и восстановление отсутствующих записей.</p><p id="pae04-offline-status" class="pae04-offline-status" role="status" aria-live="polite" data-ready="false">Офлайн-копия: проверяем…</p></div><span class="tag">JSON · SHA-256</span></div>
           <article class="panel safety-panel" id="data-safety-panel">
             <h2><span aria-hidden="true">🛡️</span> Проверка сохранности данных</h2>
             <p class="form-hint">Проверяем все четыре хранилища IndexedDB и связи записей. Это не создаёт резервную копию и не гарантирует защиту от удаления приложения.</p>
@@ -119,5 +119,6 @@
   <script src="./app.js" defer></script>
   <script src="./home.js" defer></script>
   <script src="./personal_adapter.js" defer></script>
+  <script src="./offline_status.js" defer></script>
 </body>
 </html>
