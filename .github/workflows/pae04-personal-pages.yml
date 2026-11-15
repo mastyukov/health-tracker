@@ -1,3 +1,4 @@
+# Re-run the previously approved personal Pages deployment after GitHub Actions was selected in Pages settings.
 name: PAE-04 PERSONAL Health Tracker deploy verified site to Pages
 on:
   push:
