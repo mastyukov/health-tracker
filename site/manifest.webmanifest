@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "HEALTH TRACKER · Персональный тестовый предпросмотр",
-  "short_name": "Health Tracker TEST",
-  "description": "Персональный тестовый PWA для iPhone Safari. Локальный учёт давления и препаратов, без синхронизации с основной версией.",
+  "name": "Health Tracker · Личный журнал",
+  "short_name": "Health Tracker",
+  "description": "Личная бета v0.6.1. Давление, пульс и приём лекарств — локально на iPhone, без напоминаний.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
