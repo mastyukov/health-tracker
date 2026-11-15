@@ -103,7 +103,7 @@
     if(!form||document.getElementById(id))return;
     const panel=element('section');panel.className='pae04-profile-panel';
     panel.setAttribute('aria-label','Персональный тестовый справочник');
-    const title=element('strong','Мои препараты · персональный предпросмотр');
+    const title=element('strong','Мои препараты · личный справочник');
     const note=element('p','10 настоящих названий с дозировками, включая препараты и БАДы. Приёмы и давление не загружаются.');
     const button=element('button','Проверяю справочник…');
     button.id=id;button.type='button';button.disabled=true;
