@@ -82,3 +82,16 @@ body .nav-item{font-size:calc(14px * var(--ht-home-scale))}
 .pae04-profile-panel button:disabled{background:#8b9ab0}
 .pae04-profile-panel p{margin:7px 0;color:#41556e;font-size:14px;overflow-wrap:anywhere}
 @media(max-width:355px){.pae04-profile-panel{padding:12px}}
+
+/* PAE-04 v0.6.1: approved Apple Light Comfort, calm blue personal beta.
+   A purely presentational update; 48px medication check targets stay unchanged. */
+body .alert{
+  background:#eff5ff;border:1px solid #d5e4f8;color:#365675;
+  border-radius:18px;font-size:clamp(14px,3.6vw,16px);line-height:1.5;
+}
+body .demo-pill{background:#ecf3fc;border:1px solid #d6e5f8;color:#315c8e}
+body .brand small{letter-spacing:.07em}
+@media(max-width:355px){
+  body .alert{padding:12px}
+  body .brand small{letter-spacing:.035em}
+}
