@@ -30,6 +30,8 @@ jobs:
           test "$GITHUB_REF" = 'refs/heads/release/pae04-personal-v06-rc1'
           test ! -e site
           test -f project/RELEASE_RC1.md
+          test -f qa/rc1/verify_site.py
+          test -f .github/workflows/pae04-rc1-qa.yml
           python -c "import sys; assert sys.version_info[:2]==(3,12)"
           node -e "if(process.versions.node.split('.')[0]!=='26')process.exit(3)"
       - name: Fetch exact pinned public TEST source (read-only)
