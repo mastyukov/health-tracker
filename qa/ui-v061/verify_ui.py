@@ -33,10 +33,33 @@ home=once(old("home.js"),
 check("Home medicine time display logic untouched except missing schedule hint",home==current("home.js"))
 adapter=once(old("personal_adapter.js"),"Мои препараты · персональный предпросмотр","Мои препараты · личный справочник")
 check("Personal profile transaction code untouched",adapter==current("personal_adapter.js"))
-sw=once(old("sw.js"),"cache-cpreal01-20261115","cache-personal-v061-20261115")
-check("Service Worker unchanged except versioned cache",sw==current("sw.js"))
+sw=current("sw.js")
+offline=current("offline_status.js")
+originalFiles=old("sw.js").split("const FILES=")[1].split(";")[0]
+check("Original static files still precached", all(token in sw for token in (
+    "'./index.html'","'./app.js'","'./home.js'","'./home.css'",
+    "'./personal_adapter.js'","'./personal_profile.json'","'./med_guard.mjs'",
+    "'./manifest.webmanifest'","'./icons/icon-192.png'","'./icons/icon-512.png'")))
+check("Offline worker never reads or changes health storage",
+      "indexedDB.open" not in sw and "localStorage." not in sw and "indexedDB.open" not in offline
+      and "localStorage." not in offline)
+check("Safari offline URL fallback never rejects navigation",
+      "async function matchAppShell" in sw and
+      "request.mode==='navigate'" in sw and
+      "return offlineUnavailable();" in sw and "status:503" in sw)
+check("Named cache avoids global Cache API match bug",
+      "caches.match(" not in sw and "cache.match(request" in sw)
+check("Offline readiness requires registered active SW and verified shell",
+      "registration?.active" in offline and "navigator.serviceWorker.controller" in offline
+      and "found.every(Boolean)" in offline)
+check("Offline worker and readiness module share same explicit cache version",
+      "personal-v061-offline1-20261115" in sw and
+      "personal-v061-offline1-20261115" in offline)
 css0=old("home.css");css=current("home.css")
 check("Original Apple Light Comfort CSS preserved",css.startswith(css0))
+check("Offline readiness uses Apple Light Comfort with no hidden control",
+      ".pae04-offline-status" in css[len(css0):] and
+      "[data-ready=\"true\"]" in css[len(css0):])
 check("Added only light-theme styling, no removed rules",
       "approved Apple Light Comfort" in css[len(css0):] and "display:none" not in css[len(css0):])
 manifest0=json.loads(old("manifest.webmanifest"))
@@ -54,18 +77,21 @@ check("Protected HTML structure unchanged",
           'id="page-overview"','id="page-pressure"','id="page-meds"',
           'id="page-backup"','id="export-button"','id="verify-file"',
           'id="import-button"','id="checkpoint-button"'))
-      and html0.count("<script")==html.count("<script"))
+      and html0.count("<script")+1==html.count("<script")
+      and html.count('id="pae04-offline-status"')==1
+      and html.count('src="./offline_status.js"')==1)
 check("Internal backup format v3 and database name unchanged",
       "const BACKUP_VERSION=3" in app and
       "const DB_VERSION=1" in app and
       "const STORE_NAMES=['pressures','medications','intakes','intakeEvents']" in app and
       "const BACKUP_FORMAT='pae04.healthtracker.synthetic-backup'" in app and
       "const DB_NAME='PAE04_HT_STABLE_CANDIDATE_INTEGRATION_SYNTHETIC_SCHEMA1'" in app)
-check("No remote telemetry added to JS",all("https://" not in current(n) for n in ("app.js","home.js","personal_adapter.js","sw.js")))
+check("No remote telemetry added to JS",all("https://" not in current(n) for n in ("app.js","home.js","personal_adapter.js","sw.js","offline_status.js")))
 diff=subprocess.check_output(["git","diff","--name-only",base,"HEAD","--","site/"],text=True).splitlines()
 allowed={
 "site/index.html","site/home.js","site/home.css","site/app.js",
-"site/manifest.webmanifest","site/personal_adapter.js","site/sw.js"
+"site/manifest.webmanifest","site/personal_adapter.js","site/sw.js",
+"site/offline_status.js"
 }
 check("Only seven approved site source files changed",set(diff)==allowed)
 print("RESULT=PASS PAE04_UI_V061_INVARIANTS",flush=True)
