@@ -1,0 +1,82 @@
+name: PAE-04 RC1 independent Safari WebKit release acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'qa/rc1/**'
+      - '.github/workflows/pae04-rc1-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  acceptance:
+    if: github.event_name == 'pull_request' && github.head_ref == 'release/pae04-personal-v06-rc1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      PAE04_SYNTHETIC_ONLY: 'true'
+      SOURCE_SHA: '39be9bea9b23098034f31506ed8418e3aed96056'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify exact site assets and unchanged backup format
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = 'mastyukov/health-tracker'
+          python -c "import sys;assert sys.version_info[:2]==(3,12)"
+          node -e "if(process.versions.node.split('.')[0]!=='26')process.exit(2)"
+          python qa/rc1/verify_site.py site
+          node --check site/app.js
+          node --check site/home.js
+          node --check site/personal_adapter.js
+          node --check site/med_guard.mjs
+      - name: Fetch pinned original QA source (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git init "$RUNNER_TEMP/pae04-source"
+          git -C "$RUNNER_TEMP/pae04-source" remote add origin https://github.com/mastyukov-cyber/pae04-health-tracker-test.git
+          git -C "$RUNNER_TEMP/pae04-source" fetch --no-tags --depth=1 origin "$SOURCE_SHA"
+          git -C "$RUNNER_TEMP/pae04-source" checkout --detach FETCH_HEAD
+          test "$(git -C "$RUNNER_TEMP/pae04-source" rev-parse HEAD)" = "$SOURCE_SHA"
+      - name: Install exactly Playwright 1.65.1 with WebKit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'playwright==1.65.1'
+          python -m playwright install --with-deps webkit
+          python -c "from importlib.metadata import version;assert version('playwright')=='1.65.1'"
+      - name: Run the unchanged original v05.5.2 full regression on WebKit
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/pae04-source"
+          python qa/runtime-migration-pilot/run_suite.py webkit RELEASE
+      - name: Check original 27 personal-profile static invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          python "$RUNNER_TEMP/pae04-source/qa/cp-real01/tests/static_qa.py" "$GITHUB_WORKSPACE/site"
+      - name: Run 19 personal-name/dose integration tests on actual release site
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/pae04-release-qa"
+          python "$RUNNER_TEMP/pae04-source/qa/cp-real01/tests/browser_qa.py" webkit "$GITHUB_WORKSPACE/site" "$RUNNER_TEMP/pae04-release-qa" | tee "$RUNNER_TEMP/pae04-release-qa/webkit.log"
+          grep -q 'RESULT=PASS ENGINE=webkit CP_REAL01=19/19' "$RUNNER_TEMP/pae04-release-qa/webkit.log"
+          echo 'PAE04_FINAL_RC1_WEBKIT_ACCEPTANCE=PASS'
+      - name: Upload only synthetic QA logs and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pae04-final-rc1-webkit-qa
+          path: ${{ runner.temp }}/pae04-release-qa/
+          retention-days: 14
+          if-no-files-found: warn

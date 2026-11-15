@@ -1,0 +1,98 @@
+name: PAE-04 RC1 Stage pinned personal Safari PWA (NO DEPLOY)
+on:
+  push:
+    branches: [release/pae04-personal-v06-rc1]
+    paths: ['.github/workflows/pae04-rc1-stage.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  stage:
+    if: github.repository == 'mastyukov/health-tracker' && github.ref == 'refs/heads/release/pae04-personal-v06-rc1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Refuse unexpected refs and source drift
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = 'mastyukov/health-tracker'
+          test "$GITHUB_REF" = 'refs/heads/release/pae04-personal-v06-rc1'
+          test ! -e site
+          test -f project/RELEASE_RC1.md
+          test -f qa/rc1/verify_site.py
+          test -f .github/workflows/pae04-rc1-qa.yml
+          python -c "import sys; assert sys.version_info[:2]==(3,12)"
+          node -e "if(process.versions.node.split('.')[0]!=='26')process.exit(3)"
+      - name: Fetch exact pinned public TEST source (read-only)
+        shell: bash
+        env:
+          SOURCE_SHA: '39be9bea9b23098034f31506ed8418e3aed96056'
+        run: |
+          set -euo pipefail
+          git init "$RUNNER_TEMP/pae04-rc1-upstream"
+          git -C "$RUNNER_TEMP/pae04-rc1-upstream" remote add origin https://github.com/mastyukov-cyber/pae04-health-tracker-test.git
+          git -C "$RUNNER_TEMP/pae04-rc1-upstream" -c protocol.version=2 fetch --no-tags --depth=1 origin "$SOURCE_SHA"
+          git -C "$RUNNER_TEMP/pae04-rc1-upstream" checkout --detach FETCH_HEAD
+          test "$(git -C "$RUNNER_TEMP/pae04-rc1-upstream" rev-parse HEAD)" = "$SOURCE_SHA"
+          test -d "$RUNNER_TEMP/pae04-rc1-upstream/docs"
+          test -f "$RUNNER_TEMP/pae04-rc1-upstream/qa/cp-real01/tests/browser_qa.py"
+          echo 'PINNED_UPSTREAM_SHA=PASS'
+      - name: Copy only pinned static files and verify exact Git blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -a "$RUNNER_TEMP/pae04-rc1-upstream/docs" ./site
+          python qa/rc1/verify_site.py site
+          node --check site/app.js
+          node --check site/home.js
+          node --check site/med_guard.mjs
+          node --check site/med_matcher.mjs
+          node --check site/personal_adapter.js
+          echo 'PINNED_STATIC_AND_NODE=PASS'
+      - name: Install strictly pinned Playwright WebKit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'playwright==1.65.1'
+          python -m playwright install --with-deps webkit
+          python -c "from importlib.metadata import version; assert version('playwright')=='1.65.1'"
+      - name: Test personal profile in WebKit before any push
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/pae04-rc1-qa"
+          python "$RUNNER_TEMP/pae04-rc1-upstream/qa/cp-real01/tests/browser_qa.py" webkit "$PWD/site" "$RUNNER_TEMP/pae04-rc1-qa" | tee "$RUNNER_TEMP/pae04-rc1-qa/webkit.log"
+          grep -q 'RESULT=PASS ENGINE=webkit CP_REAL01=19/19' "$RUNNER_TEMP/pae04-rc1-qa/webkit.log"
+          echo 'STAGED_PERSONAL_WEBKIT=PASS'
+      - name: Commit ONLY new site files on the isolated release branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/release/pae04-personal-v06-rc1'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- site/
+          test "$(git diff --cached --name-only | grep -vc '^site/' || true)" -eq 0
+          git diff --cached --quiet && { echo 'BLOCKED: no files to stage'; exit 1; }
+          git commit -m 'PAE-04 PERSONAL RC1: stage verified Safari PWA (no Pages deployment)'
+          git push origin HEAD:refs/heads/release/pae04-personal-v06-rc1
+          echo 'RC1_STAGE_PASS; MAIN_AND_PAGES_NOT_MODIFIED'
+      - name: Preserve synthetic screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pae04-personal-rc1-staging-webkit
+          path: ${{ runner.temp }}/pae04-rc1-qa/
+          retention-days: 14
+          if-no-files-found: warn
