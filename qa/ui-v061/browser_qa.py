@@ -81,6 +81,8 @@ try:
 
         # Backup acceptance: only disposable fictitious browser-origin contents.
         page.locator('[data-page="backup"]').click()
+        expect(page.locator("#pae04-offline-status")).to_have_attribute("data-ready","true",timeout=15000)
+        check("offline-readiness indicator verifies controlled, cached app shell",True)
         expect(page.locator("#export-button")).to_be_visible()
         with page.expect_download(timeout=10000) as d:
             page.locator("#export-button").click()
@@ -116,7 +118,37 @@ try:
         expect(page.locator("#overview-title")).to_contain_text("Сегодня")
         check("offline WebKit load preserves local medicines", "Эдарби" in page.locator("#ui01-meds").inner_text())
         check("offline local backup data retained",counts(page)==dict(pressures=0,medications=10,intakes=0,intakeEvents=0))
+        page.locator('[data-page="backup"]').click()
+        expect(page.locator("#pae04-offline-status")).to_have_attribute("data-ready","true",timeout=15000)
+        check("offline status remains READY without Internet",True)
+        page.goto(url+"?origin=chatgpt",wait_until="domcontentloaded",timeout=15000)
+        expect(page.locator("#overview-title")).to_contain_text("Сегодня")
+        check("Safari offline navigation with query parameters works",counts(page)['medications']==10)
+        directory_url=url.rsplit("index.html",1)[0]
+        page.goto(directory_url+"?from=chatgpt",wait_until="domcontentloaded",timeout=15000)
+        expect(page.locator("#overview-title")).to_contain_text("Сегодня")
+        check("Safari offline slash navigation with query works",counts(page)['medications']==10)
         context.set_offline(False)
+        # A fresh, disposable origin with an intentionally evicted Cache Storage
+        # must show a clear 503 rather than a raw Safari FetchEvent exception.
+        extra=browser.new_context(viewport={"width":390,"height":844})
+        miss=extra.new_page()
+        miss.goto(url,wait_until="networkidle")
+        miss.evaluate("navigator.serviceWorker.ready")
+        miss.reload(wait_until="domcontentloaded")
+        miss.wait_for_function("navigator.serviceWorker.controller !== null",timeout=15000)
+        miss.evaluate("""async () => {
+          for (const name of await caches.keys()) {
+            if(name.includes('personal-v061-offline1')) await caches.delete(name);
+          }
+        }""")
+        extra.set_offline(True)
+        response=miss.goto(url+"?simulated-cache-loss=1",wait_until="domcontentloaded",timeout=15000)
+        check("cache eviction returns explicit 503 instead of raw FetchEvent error",
+              response is not None and response.status==503 and
+              "Офлайн-копия ещё не готова" in miss.locator("body").inner_text())
+        extra.set_offline(False)
+        extra.close()
         check("no JavaScript exceptions",not errors)
         context.close();browser.close()
 finally:
