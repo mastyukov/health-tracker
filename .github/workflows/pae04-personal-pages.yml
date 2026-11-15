@@ -6,6 +6,11 @@ on:
     paths:
       - 'site/**'
       - '.github/workflows/pae04-personal-pages.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'qa/ui-v061/verify_release.py'
+      - '.github/workflows/pae04-personal-pages.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -15,6 +20,25 @@ concurrency:
   group: pae04-personal-pages
   cancel-in-progress: false
 jobs:
+  preflight:
+    if: github.event_name == 'pull_request' && github.head_ref == 'fix/pae04-v061-pages-pin-gate'
+    permissions:
+      contents: read
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify all 22 immutable release assets and full v0.6.1 safety contract
+        run: |
+          set -euo pipefail
+          python qa/ui-v061/verify_release.py site
+          python qa/ui-v061/verify_ui.py site
+          echo 'PAE04_V061_PAGES_PREFLIGHT_PASS'
   deploy:
     if: github.repository == 'mastyukov/health-tracker' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
@@ -24,6 +48,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -32,7 +58,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = 'refs/heads/main'
-          python qa/rc1/verify_site.py site
+          python qa/ui-v061/verify_release.py site
+          python qa/ui-v061/verify_ui.py site
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
