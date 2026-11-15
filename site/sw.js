@@ -1,5 +1,5 @@
 'use strict';
-const CACHE='pae04-ht-stable-candidate-synthetic-schema1-cache-cpreal01-20261115';
+const CACHE='pae04-ht-stable-candidate-synthetic-schema1-cache-personal-v061-20261115';
 const FILES=['./personal_adapter.js','./personal_profile.json','./med_guard.mjs','./med_matcher.mjs','./med_guard.css','./','./index.html','./app.js','./styles.css','./manifest.webmanifest','./icons/icon.svg','./icons/apple-touch-icon.png','./icons/icon-192.png','./icons/icon-512.png','./home.js','./home.css'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('pae04-ht-stable-candidate-synthetic-schema1-cache-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
