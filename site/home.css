@@ -95,3 +95,14 @@ body .brand small{letter-spacing:.07em}
   body .alert{padding:12px}
   body .brand small{letter-spacing:.035em}
 }
+
+/* CP-OFFLINE01 · status is informational; it never touches the local records. */
+.pae04-offline-status{
+  display:inline-block;max-width:100%;padding:9px 12px;margin:10px 0 0;
+  background:#eef4fc;border:1px solid #d5e4f8;border-radius:12px;
+  color:#365675;font-size:14px;line-height:1.45;overflow-wrap:anywhere
+}
+.pae04-offline-status[data-ready="true"]{
+  background:#edf8f3;border-color:#badacb;color:#21664c
+}
+@media(max-width:355px){.pae04-offline-status{font-size:13px;padding:8px 10px}}
