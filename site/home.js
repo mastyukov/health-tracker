@@ -120,7 +120,7 @@
     const desc=element('div','ui01-med-description');
     desc.append(element('strong','ui01-med-name',m.name));
     if(m.dose)desc.append(element('span','ui01-personal-dose',m.dose));
-    desc.append(element('span','ui01-muted',m.kind==='asNeeded'?'По необходимости':'Плановое время не задано'));
+    if(m.kind==='asNeeded')desc.append(element('span','ui01-muted','По необходимости'));
     if(previous.length)desc.append(element('span','ui01-yesterday-time','Вчера принято: '+previous.join(', ')));
     if(current.length)desc.append(element('span','ui01-today-time','Сегодня: '+current.join(', ')));
     const btn=element('button','ui01-check'+(current.length?' is-taken':''),current.length?'✓':'○');
