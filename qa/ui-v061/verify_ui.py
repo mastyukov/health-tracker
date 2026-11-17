@@ -53,8 +53,8 @@ check("Offline readiness requires registered active SW and verified shell",
       "registration?.active" in offline and "navigator.serviceWorker.controller" in offline
       and "found.every(Boolean)" in offline)
 check("Offline worker and readiness module share same explicit cache version",
-      "personal-v061-offline1-20261115" in sw and
-      "personal-v061-offline1-20261115" in offline)
+      "personal-v061-cachefix-20261117" in sw and
+      "personal-v061-cachefix-20261117" in offline)
 css0=old("home.css");css=current("home.css")
 check("Original Apple Light Comfort CSS preserved",css.startswith(css0))
 check("Offline readiness uses Apple Light Comfort with no hidden control",
