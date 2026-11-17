@@ -21,17 +21,17 @@ EXPECTED={
   "icons/icon-192.png": "c07d28a59f0d773c2e18af62b261b50389f60a94",
   "icons/icon-512.png": "09673205f1b64d689d8899c1096031ba351f34cc",
   "icons/icon.svg": "05b76763ede5f0d88e2b855f3d90ed72ddf64842",
-  "index.html": "9eb534accb7fafbd0821f23204bf5bc5f522313b",
-  "manifest.webmanifest": "9d0a1027ecc1f87c806a347da2f4abd012288e6c",
+  "index.html": "cf3c3fddcbbb4f3b0e7424ad26be560d97a1a260",
+  "manifest.webmanifest": "e86cb612dd8cdc6829e8e9cf5e12fe7ddca60ac2",
   "med_guard.css": "1ebdff67c6ae4088759bc1c9059ee7f2f5fd6b2e",
   "med_guard.mjs": "9435ec752a887f0e6e5b696be6eaefc7d6999704",
   "med_matcher.mjs": "cf08822f5e71c8fb505fbec066e5eec9145215c6",
-  "offline_status.js": "2b2441d09efeaabc1d0594f77bdc84e0efb30e9f",
+  "offline_status.js": "cdeecc3d1cd889621ec26bdf2dd02c28aacffe4e",
   "personal_adapter.js": "277b8bc2435d4bd9f4b30c89db15570ca2f2656f",
   "personal_profile.json": "5b21b52962b8ff2ebc48e5a394ef3cd308d50b4c",
   "robots.txt": "1f53798bb4fe33c86020be7f10c44f29486fd190",
   "styles.css": "71c12c82adc41aefe039ddb43ec8724d759d82e9",
-  "sw.js": "c76b0ce3288abf5b3753243f4ed8ab9833acc005"
+  "sw.js": "3c1665798b59fd5707b14bdfee4491b09f3d8111"
 }
 assert site.is_dir(), "Missing release site"
 actual={str(p.relative_to(site)) for p in site.rglob("*") if p.is_file()}
@@ -55,7 +55,7 @@ assert "const BACKUP_FORMAT='pae04.healthtracker.synthetic-backup'" in app
 assert "const STORE_NAMES=['pressures','medications','intakes','intakeEvents']" in app
 assert "const DB_NAME='PAE04_HT_STABLE_CANDIDATE_INTEGRATION_SYNTHETIC_SCHEMA1'" in app
 assert 'serviceWorker.register' in app
-assert "personal-v061-offline1-20261115" in sw and "personal-v061-offline1-20261115" in offline
+assert "personal-v061-cachefix-20261117" in sw and "personal-v061-cachefix-20261117" in offline
 assert "return offlineUnavailable();" in sw
 assert "default-src 'self'" in html and "unsafe-inline" not in html
 assert "noindex,nofollow,noarchive" in html
