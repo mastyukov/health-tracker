@@ -26,7 +26,12 @@ for a,b in (
     app=once(app,a,b)
 check("Two old educational-result labels",app.count(" учебных записей")==2)
 app=app.replace(" учебных записей"," записей")
-check("All application logic identical except three backup labels",app==current("app.js"))
+app=once(app, "function connectStatus(){const online=navigator.onLine,el=$('connection-status');el.replaceChildren(node('span',`status-dot ${online?'online':'offline'}`),document.createTextNode(online?'Соединение доступно':'Нет интернета · офлайн'));}", "function connectStatus(state='checking'){const el=$('connection-status');const label=state==='ready'?'Локальная база доступна':state==='error'?'Локальная база недоступна':'Проверяем локальную базу';const cls=state==='ready'?'online':state==='error'?'offline':'';el.replaceChildren(node('span',`status-dot ${cls}`),document.createTextNode(label));}")
+app=once(app, "window.addEventListener('online',connectStatus);window.addEventListener('offline',connectStatus);connectStatus();", "connectStatus();")
+app=once(app, "await openDB();await reload();await reportBrowserStorage();", "await openDB();await reload();connectStatus('ready');await reportBrowserStorage();")
+app=once(app, "}catch(e){showMessage(`Не удалось открыть локальную базу:", "}catch(e){connectStatus('error');showMessage(`Не удалось открыть локальную базу:")
+check("Only approved local database badge changes plus backup labels",app==current("app.js"))
+check("No unreliable network indicator in app", "navigator.onLine" not in current("app.js") and "Соединение доступно" not in current("app.js"))
 home=once(old("home.js"),
     "desc.append(element('span','ui01-muted',m.kind==='asNeeded'?'По необходимости':'Плановое время не задано'));",
     "if(m.kind==='asNeeded')desc.append(element('span','ui01-muted','По необходимости'));")
@@ -53,8 +58,8 @@ check("Offline readiness requires registered active SW and verified shell",
       "registration?.active" in offline and "navigator.serviceWorker.controller" in offline
       and "found.every(Boolean)" in offline)
 check("Offline worker and readiness module share same explicit cache version",
-      "personal-v061-cachefix-20261117" in sw and
-      "personal-v061-cachefix-20261117" in offline)
+      "personal-v0612-localdbstatus-20261117" in sw and
+      "personal-v0612-localdbstatus-20261117" in offline)
 css0=old("home.css");css=current("home.css")
 check("Original Apple Light Comfort CSS preserved",css.startswith(css0))
 check("Offline readiness uses Apple Light Comfort with no hidden control",
@@ -68,7 +73,7 @@ for key in ("name","short_name","description"):manifest0.pop(key);manifest.pop(k
 check("App identity/scope/icons unchanged",manifest0==manifest)
 html0=old("index.html");html=current("index.html")
 check("Version visible and old synthetic-only warning gone",
-      'v0.6.1' in html and 'Личная бета-версия.' in html
+      'v0.6.1.2' in html and 'Личная бета-версия.' in html
       and 'Изолированный эксперимент.' not in html
       and 'Только тестовые данные' not in html
       and 'Настоящие медицинские сведения вводить нельзя.' not in html)
