@@ -15,7 +15,7 @@ for(const [label,scope] of [['VERIFY',verification],['PREVIEW',preview]]){
  const normalize=scope.indexOf('normalizedBackupData(parsed.version,parsed.data)');
  assert.ok(sha>=0&&gate>sha&&normalize>gate,label+' must check SHA then schema then normalization');
 }
-assert.ok(!guard.includes('name:\\''));
+assert.ok(!guard.includes('window.location'),'guard cannot navigate');
 const check=new Function('STORE_NAMES',guard+';return validateExternalBackupShape;')(['pressures','medications','intakes','intakeEvents']);
 const copy=o=>JSON.parse(JSON.stringify(o)),now='2026-11-17T12:00:00.000Z',day='2026-11-17',dt=day+'T11:00',id='TEST_SYNTH_123';
 const data={
