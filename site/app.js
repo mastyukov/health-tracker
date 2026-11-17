@@ -577,6 +577,25 @@ async function createBackup(){
   const body={format:BACKUP_FORMAT,version:BACKUP_VERSION,exportedAt:new Date().toISOString(),data};
   return {...body,sha256:await sha256(body)};
 }
+// PAE-04 owner-approved policy: selected EXTERNAL backups only, after SHA-256.
+function validateExternalBackupShape(parsed){
+  const rejectUnknown=(value,allowed,label)=>{
+    if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Некорректный объект '+label);
+    const known=new Set(allowed);
+    for(const key of Object.keys(value))if(!known.has(key))throw Error('Неизвестное поле '+label+'.'+key);
+  };
+  rejectUnknown(parsed,['format','version','exportedAt','data','sha256'],'backup');
+  const names=parsed.version<3?['pressures','medications','intakes']:STORE_NAMES;
+  rejectUnknown(parsed.data,names,'data');
+  for(const name of names)if(!Array.isArray(parsed.data[name]))throw Error('Отсутствует необходимая таблица '+name);
+  const allowed={
+    pressures:['id','systolic','diastolic','pulse','dateTime','note','arm','createdAt','updatedAt'],
+    intakes:['id','medId','date','takenAtLocal','markedAt','status','dailySlot','takenQuantity','takenUnit','updatedAt','cancelledAt'],
+    intakeEvents:['id','intakeId','medId','action','at','oldTakenAtLocal','newTakenAtLocal']
+  };
+  for(const name of ['pressures','intakes','intakeEvents'])
+    for(const row of (parsed.data[name]||[]))rejectUnknown(row,allowed[name],name);
+}
 function validateBackupData(data,includeLocal=true){
   if(!data||typeof data!=='object'||STORE_NAMES.some(n=>!Array.isArray(data[n])))throw Error('Отсутствует необходимая таблица');
   let total=0;const ids={};
@@ -683,6 +702,7 @@ async function verifyDownloadedBackup(e){
       typeof parsed.sha256!=='string'||!/^[a-f0-9]{64}$/.test(parsed.sha256))throw Error('Неверный формат копии');
     const {sha256:expected,...body}=parsed;
     if(await sha256(body)!==expected)throw Error('SHA-256 не совпадает: файл изменён или повреждён');
+    validateExternalBackupShape(parsed);
     if(sequence!==backupVerifySequence)return;
     const normalized=normalizedBackupData(parsed.version,parsed.data);
     const total=validateBackupData(normalized,false);
@@ -718,6 +738,7 @@ async function previewImport(e){
       !parsed.data||typeof parsed.sha256!=='string'||!/^[a-f0-9]{64}$/.test(parsed.sha256))throw Error('Неверный формат');
     const {sha256:expected,...body}=parsed;
     if(await sha256(body)!==expected)throw Error('SHA-256 не совпадает: файл повреждён');
+    validateExternalBackupShape(parsed);
     if(sequence!==importPreviewSequence)return;
     await reload();
     if(sequence!==importPreviewSequence)return;
