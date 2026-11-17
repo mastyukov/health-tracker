@@ -11,7 +11,7 @@ from pathlib import Path
 site=Path(sys.argv[1]).resolve()
 EXPECTED={
   ".nojekyll": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
-  "app.js": "efebc05f9f6c1071adc4d44db4202656df5c9625",
+  "app.js": "5456ca77ceb716c15aec7f475fb7277527b100eb",
   "CP_MED05_BUILD.json": "73cae13ae3002afd9a139805e7152acfc1ad4762",
   "CP_REAL01_BUILD.json": "b7010ad22f5503f1e63148514f628765e6edd248",
   "CP_UI01_BUILD.json": "b92bd7c5e2720a663cf502ee2abfa9650a7e6dfa",
@@ -21,17 +21,17 @@ EXPECTED={
   "icons/icon-192.png": "c07d28a59f0d773c2e18af62b261b50389f60a94",
   "icons/icon-512.png": "09673205f1b64d689d8899c1096031ba351f34cc",
   "icons/icon.svg": "05b76763ede5f0d88e2b855f3d90ed72ddf64842",
-  "index.html": "cf3c3fddcbbb4f3b0e7424ad26be560d97a1a260",
-  "manifest.webmanifest": "e86cb612dd8cdc6829e8e9cf5e12fe7ddca60ac2",
+  "index.html": "0e0f0b2f1718da0b1f6d582e150a06a28211203f",
+  "manifest.webmanifest": "286b617561ca641795b3017e95837377f7700a08",
   "med_guard.css": "1ebdff67c6ae4088759bc1c9059ee7f2f5fd6b2e",
   "med_guard.mjs": "9435ec752a887f0e6e5b696be6eaefc7d6999704",
   "med_matcher.mjs": "cf08822f5e71c8fb505fbec066e5eec9145215c6",
-  "offline_status.js": "cdeecc3d1cd889621ec26bdf2dd02c28aacffe4e",
+  "offline_status.js": "16a5edc20bc07d93b39dfdf5d72d7ed16fdfb7fb",
   "personal_adapter.js": "277b8bc2435d4bd9f4b30c89db15570ca2f2656f",
   "personal_profile.json": "5b21b52962b8ff2ebc48e5a394ef3cd308d50b4c",
   "robots.txt": "1f53798bb4fe33c86020be7f10c44f29486fd190",
   "styles.css": "71c12c82adc41aefe039ddb43ec8724d759d82e9",
-  "sw.js": "3c1665798b59fd5707b14bdfee4491b09f3d8111"
+  "sw.js": "54434221599437f010fef6d9cc2aca73fca21ffc"
 }
 assert site.is_dir(), "Missing release site"
 actual={str(p.relative_to(site)) for p in site.rglob("*") if p.is_file()}
@@ -48,14 +48,15 @@ sw=(site/"sw.js").read_text(encoding="utf-8")
 offline=(site/"offline_status.js").read_text(encoding="utf-8")
 profile=json.loads((site/"personal_profile.json").read_text(encoding="utf-8"))
 manifest=json.loads((site/"manifest.webmanifest").read_text(encoding="utf-8"))
-assert "PERSONAL BETA · v0.6.1" in html and 'src="./offline_status.js"' in html
+assert "PERSONAL BETA · v0.6.1.2" in html and 'src="./offline_status.js"' in html
+assert "navigator.onLine" not in app and "Локальная база доступна" in app
 assert "const DB_VERSION=1" in app
 assert "const BACKUP_VERSION=3" in app
 assert "const BACKUP_FORMAT='pae04.healthtracker.synthetic-backup'" in app
 assert "const STORE_NAMES=['pressures','medications','intakes','intakeEvents']" in app
 assert "const DB_NAME='PAE04_HT_STABLE_CANDIDATE_INTEGRATION_SYNTHETIC_SCHEMA1'" in app
 assert 'serviceWorker.register' in app
-assert "personal-v061-cachefix-20261117" in sw and "personal-v061-cachefix-20261117" in offline
+assert "personal-v0612-localdbstatus-20261117" in sw and "personal-v0612-localdbstatus-20261117" in offline
 assert "return offlineUnavailable();" in sw
 assert "default-src 'self'" in html and "unsafe-inline" not in html
 assert "noindex,nofollow,noarchive" in html
