@@ -595,6 +595,13 @@ function validateExternalBackupShape(parsed){
   };
   for(const name of ['pressures','intakes','intakeEvents'])
     for(const row of (parsed.data[name]||[]))rejectUnknown(row,allowed[name],name);
+  // Reject unrecognised nested quantity keys in selected external backups only.
+  // Preserve optional historical scalar/null quantities and the existing fraction shape.
+  for(const row of (parsed.data.intakes||[])){
+    const quantity=row.takenQuantity;
+    if(quantity!==null&&typeof quantity==='object')
+      rejectUnknown(quantity,['numerator','denominator'],'intake.takenQuantity');
+  }
 }
 function validateBackupData(data,includeLocal=true){
   if(!data||typeof data!=='object'||STORE_NAMES.some(n=>!Array.isArray(data[n])))throw Error('Отсутствует необходимая таблица');
