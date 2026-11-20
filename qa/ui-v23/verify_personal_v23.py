@@ -53,7 +53,7 @@ assert "const BACKUP_FORMAT='pae04.healthtracker.synthetic-backup'" in app,'BACK
 assert 'navigator.onLine' not in app and 'Локальная база доступна' in app,'LOCAL_DB_BADGE_REGRESSION'
 assert 'TEST: импорт резервных копий отключён' not in app,'IMPORT_TEST_DISABLE'
 assert 'indexedDB.deleteDatabase' not in app,'UNAPPROVED_DB_DELETE'
-assert 'personal-v232-design02-20261121' in sw and 'personal-v23-design01-20261121' in offline,'CACHE_VERSION_MISMATCH'
+assert 'personal-v232-design02-20261121' in sw and 'personal-v232-design02-20261121' in offline,'CACHE_VERSION_MISMATCH'
 assert "'./personal_adapter.js'" in sw and "'./personal_profile.json'" in sw,'PERSONAL_ASSETS_NOT_PRECACHED'
 assert 'indexedDB.open' not in sw and 'indexedDB.open' not in offline,'SW_TOUCHES_USER_DATA'
 assert manifest['id']=='./' and manifest['scope']=='./' and manifest['start_url']=='./index.html' and manifest['display']=='standalone','PWA_ID_CHANGED'
