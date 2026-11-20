@@ -807,6 +807,31 @@ function validateIntakeEvent(e){
 
 function canonical(value){if(Array.isArray(value))return'['+value.map(canonical).join(',')+']';if(value!==null&&typeof value==='object'){return'{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+canonical(value[k])).join(',')+'}'}return JSON.stringify(value)}
 async function sha256(value){if(!crypto.subtle)throw Error('SHA-256 требует HTTPS или localhost');const bytes=new TextEncoder().encode(canonical(value));const digest=await crypto.subtle.digest('SHA-256',bytes);return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');}
+// CP39: strict unknown-field policy for EXTERNAL backup files only.
+// Local IndexedDB records and exports are not modified by this gate.
+function assertKnownBackupFields(envelope){
+  const allowedEnvelope=['format','version','exportedAt','data','sha256'];
+  const allowedRecords={
+    pressures:['id','systolic','diastolic','pulse','dateTime','note','arm','createdAt'],
+    intakes:['id','medId','date','markedAt','takenAtLocal','dailySlot','updatedAt','status','cancelledAt','reason'],
+    intakeEvents:['id','intakeId','medId','action','at','oldTakenAtLocal','newTakenAtLocal']
+  };
+  const assertFields=(record,allowed,label)=>{
+    if(!record||typeof record!=='object'||Array.isArray(record))throw Error('Некорректная запись резервной копии: '+label);
+    for(const key of Object.keys(record))if(!allowed.includes(key))
+      throw Error('Неизвестное поле резервной копии ('+label+'): '+key);
+  };
+  assertFields(envelope,allowedEnvelope,'envelope');
+  if(!envelope.data||typeof envelope.data!=='object'||Array.isArray(envelope.data))
+    throw Error('Некорректные данные резервной копии');
+  for(const [section,allowed] of Object.entries(allowedRecords)){
+    const rows=envelope.data[section];
+    if(section==='intakeEvents'&&(envelope.version===1||envelope.version===2)&&rows===undefined)continue;
+    if(!Array.isArray(rows))throw Error('Отсутствует таблица резервной копии: '+section);
+    for(const row of rows)assertFields(row,allowed,section);
+  }
+}
+
 function normalizedBackupData(version,data){
   if(!data||typeof data!=='object')throw Error('Отсутствует резервная копия');
   if(version<3)return {pressures:data.pressures,medications:data.medications,intakes:data.intakes,intakeEvents:[]};
@@ -1006,6 +1031,7 @@ async function verifyDownloadedBackup(e){
     const {sha256:expected,...body}=parsed;
     if(await sha256(body)!==expected)throw Error('SHA-256 не совпадает: файл изменён или повреждён');
     if(sequence!==backupVerifySequence)return;
+    assertKnownBackupFields(parsed);
     const normalized=normalizedBackupData(parsed.version,parsed.data);
     const total=validateBackupData(normalized,false);
     if(sequence!==backupVerifySequence)return;
@@ -1044,6 +1070,7 @@ async function previewImport(e){
     if(sequence!==importPreviewSequence)return;
     await reload();
     if(sequence!==importPreviewSequence)return;
+    assertKnownBackupFields(parsed);
     const data=normalizedBackupData(parsed.version,parsed.data);
     validateBackupData(data);const plan=prepareMerge(data);
     view.append(node('div',null,`Проверка SHA-256 PASS · Новых: ${plan.fresh} · Совпадающих: ${plan.duplicate} · Конфликтов: ${plan.conflicts}`));
