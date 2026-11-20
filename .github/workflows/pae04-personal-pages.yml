@@ -1,15 +1,9 @@
-# Re-run the previously approved personal Pages deployment after GitHub Actions was selected in Pages settings.
-name: PAE-04 PERSONAL Health Tracker deploy verified site to Pages
+name: PAE-04 PERSONAL iPhone UX v2.3 verified Pages deployment
 on:
   push:
     branches: [main]
     paths:
       - 'site/**'
-      - '.github/workflows/pae04-personal-pages.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'qa/ui-v061/verify_release.py'
       - '.github/workflows/pae04-personal-pages.yml'
   workflow_dispatch:
 permissions:
@@ -20,25 +14,6 @@ concurrency:
   group: pae04-personal-pages
   cancel-in-progress: false
 jobs:
-  preflight:
-    if: github.event_name == 'pull_request' && github.head_ref == 'fix/pae04-v061-pages-pin-gate'
-    permissions:
-      contents: read
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Verify all 22 immutable release assets and full v0.6.1 safety contract
-        run: |
-          set -euo pipefail
-          python qa/ui-v061/verify_release.py site
-          python qa/ui-v061/verify_ui.py site
-          echo 'PAE04_V061_PAGES_PREFLIGHT_PASS'
   deploy:
     if: github.repository == 'mastyukov/health-tracker' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
@@ -49,17 +24,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Refuse unexpected app bytes before deployment
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$GITHUB_REF" = 'refs/heads/main'
-          python qa/ui-v061/verify_release.py site
-          python qa/ui-v061/verify_ui.py site
+      - name: Verify 22 pinned assets and no unapproved data migration
+        run: python qa/ui-v23/verify_personal_v23.py site
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
