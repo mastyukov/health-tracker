@@ -42,3 +42,5 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+# PAE-04 v2.3.2 Design Pass 02: redeploy after verifying corrected offline-cache gate.
