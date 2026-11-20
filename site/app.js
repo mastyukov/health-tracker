@@ -29,6 +29,29 @@ function medDescription(m){
   return `${label} · ${form}`;
 }
 
+// CP-MULTI01: optional logging slots only, not dosage or time recommendations.
+function medDailyTarget(m){
+  if(m.dailyIntakes===undefined)return null;
+  if(![1,2,3].includes(m.dailyIntakes))throw Error('Некорректное число приёмов');
+  return m.dailyIntakes;
+}
+function medSlotLabel(goal,n){
+  return goal===2?['Утро','Вечер'][n-1]:goal===3?['Утро','День','Вечер'][n-1]:'Приём';
+}
+function medDailySlots(m,active){
+  const goal=medDailyTarget(m);if(goal===null)return [];
+  const slots=Array(goal).fill(null);
+  const ordered=[...active].filter(i=>i.status!=='cancelled')
+    .sort((a,b)=>(a.takenAtLocal||'').localeCompare(b.takenAtLocal||'')||a.markedAt.localeCompare(b.markedAt));
+  for(const i of ordered)if(Number.isInteger(i.dailySlot)&&i.dailySlot>=1&&i.dailySlot<=goal&&!slots[i.dailySlot-1])slots[i.dailySlot-1]=i;
+  return slots;
+}
+function medDailyProgress(m,active){
+  const goal=m.kind==='asNeeded'?null:medDailyTarget(m);
+  if(goal===null)return {goal:null,actual:active.length,checked:null};
+  return {goal,actual:active.length,checked:medDailySlots(m,active).filter(Boolean).length};
+}
+
 let db=null;
 let snapshot={pressures:[],medications:[],intakes:[],intakeEvents:[]};
 let pendingImport=null;
@@ -307,6 +330,11 @@ function changeIntake(action,record,previous=null){return new Promise((resolve,r
       i.medId===record.medId&&i.takenAtLocal===record.takenAtLocal&&intakeStatus(i)==='active')){
       abort('Такой приём с этим временем уже отмечен');return;
     }
+    if(intakeStatus(record)==='active'&&record.dailySlot!==undefined&&rows.some(i=>
+      i.id!==record.id&&i.medId===record.medId&&i.date===record.date&&
+      i.dailySlot===record.dailySlot&&intakeStatus(i)==='active')){
+      abort('Этот номер приёма за день уже отмечен');return;
+    }
     const event={id:crypto.randomUUID(),intakeId:record.id,medId:record.medId,action,at:new Date().toISOString()};
     if(action==='marked')event.newTakenAtLocal=record.takenAtLocal;
     if(action==='time_corrected'){
@@ -322,14 +350,85 @@ function changeIntake(action,record,previous=null){return new Promise((resolve,r
   query.onerror=()=>abort('Не удалось проверить отметки');
 });}
 
+// Update only the journal frequency. Preserve ID, dosage and intake history.
+function changeMedDailyTarget(previous,goal){
+  const next={...previous};
+  if(goal===null)delete next.dailyIntakes;else next.dailyIntakes=goal;
+  validateMed(next);
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(['medications'],'readwrite'),store=tx.objectStore('medications');
+    let error='Не удалось сохранить кратность';
+    tx.onabort=()=>reject(new Error(error));
+    tx.oncomplete=()=>verifyRecordAfterWrite('medications',next).then(()=>{safetyNeedsNewCheck();resolve()},reject);
+    const req=store.get(previous.id);
+    req.onsuccess=()=>{
+      if(!req.result||canonical(req.result)!==canonical(previous)){
+        error='Карточка изменилась в другой вкладке';
+        try{tx.abort()}catch{}return;
+      }store.put(next);
+    };
+    req.onerror=()=>{error='Не удалось проверить карточку';try{tx.abort()}catch{}};
+  });
+}
+
 async function reload(){const [pressures,medications,intakes,intakeEvents]=await Promise.all(STORE_NAMES.map(getAll));snapshot={pressures,medications,intakes,intakeEvents};render();}
 function navigate(page){dismissMobileKeyboard();for(const el of document.querySelectorAll('.page'))el.classList.toggle('active',el.id===`page-${page}`);for(const b of document.querySelectorAll('[data-page]')){const active=b.dataset.page===page;b.classList.toggle('active',active);b.setAttribute('aria-current',active?'page':'false')}window.scrollTo({top:0,behavior:'instant'});}
-function render(){const {pressures,medications,intakes}=snapshot;$('stat-pressure').textContent=String(pressures.length);$('stat-meds').textContent=String(medications.length);$('stat-intakes').textContent=String(intakes.filter(i=>intakeStatus(i)==='active').length);renderPressure();renderMedications();renderOverview();}
+function render(){const {pressures,medications,intakes}=snapshot;$('stat-pressure').textContent=String(pressures.length);$('stat-meds').textContent=String(medications.length);$('stat-intakes').textContent=String(intakes.filter(i=>intakeStatus(i)==='active').length);renderPressure();renderMedications();renderMedicationHistory();renderOverview();}
 function dateLabel(iso){try{return new Intl.DateTimeFormat('ru-RU',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(iso))}catch{return iso}}
-function renderPressure(){const list=$('pressure-list');list.replaceChildren();const all=[...snapshot.pressures].sort((a,b)=>b.dateTime.localeCompare(a.dateTime));const days=Number($('pressure-filter')?.value||0);const cutoff=days?dateTimeLocal(new Date(Date.now()-days*86400000)):null;const query=($('pressure-search')?.value||'').trim().toLocaleLowerCase('ru');const sorted=all.filter(p=>(!cutoff||p.dateTime>=cutoff)&&(!query||[`${p.systolic}/${p.diastolic}`,`${p.systolic} / ${p.diastolic}`,p.dateTime,dateLabel(p.dateTime),p.note||''].some(v=>v.toLocaleLowerCase('ru').includes(query))));$('pressure-count').textContent=days?`${sorted.length} из ${all.length} записей`:`${all.length} записей`;if(!sorted.length){list.append(node('p','empty',all.length?'По заданному фильтру измерений нет.':'Пока нет измерений.'));return;}for(const p of sorted){const r=node('div','history-row'),l=node('div'),h=node('div','row-number',`${p.systolic} / ${p.diastolic}`),sub=node('div','row-subtitle',`${dateLabel(p.dateTime)} · Правая рука${p.pulse===null?'':` · Пульс ${p.pulse}`}`);l.append(h,sub);if(p.note)l.append(node('div','row-subtitle',p.note));const b=node('button','tiny-button danger','Удалить');b.type='button';b.setAttribute('aria-label',`Удалить измерение ${p.systolic}/${p.diastolic}`);b.addEventListener('click',async()=>{if(!confirm('Удалить это ТЕСТОВОЕ измерение? Действие не отменяется.'))return;try{await removeRecord('pressures',p.id);await reload();showMessage('Тестовое измерение удалено.')}catch(e){showMessage(toError(e),'error')}});r.append(l,b);list.append(r);}}
+function periodCutoff(value){if(value==='all')return null;const days=Number(value);return Number.isFinite(days)&&days>0?dateTimeLocal(new Date(Date.now()-days*86400000)):null;}
+function renderPressureChart(){
+  const host=$('pressure-chart');if(!host)return;host.replaceChildren();
+  const all=[...snapshot.pressures].sort((a,b)=>a.dateTime.localeCompare(b.dateTime));
+  const cutoff=periodCutoff($('pressure-chart-period')?.value||'7');
+  const rows=all.filter(p=>!cutoff||p.dateTime>=cutoff);
+  if(!rows.length){host.append(node('p','empty',all.length?'За выбранный период измерений нет.':'График появится после первого измерения.'));return;}
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 720 252');svg.setAttribute('role','img');svg.setAttribute('aria-label','График давления: верхнее давление синее, нижнее зелёное, пульс красный на отдельной шкале.');
+  const add=(tag,attrs={})=>{const e=document.createElementNS(ns,tag);for(const [k,v]of Object.entries(attrs))e.setAttribute(k,String(v));svg.append(e);return e;};
+  const left=42,right=700,top=24,bottom=157,pulseTop=183,pulseBottom=222,n=rows.length;
+  const x=i=>n===1?(left+right)/2:left+(right-left)*i/(n-1);
+  const yBP=v=>bottom-(Math.max(40,Math.min(240,v))-40)/200*(bottom-top);
+  const yPulse=v=>pulseBottom-(Math.max(25,Math.min(250,v))-25)/225*(pulseBottom-pulseTop);
+  const detail=node('p','pressure-point-detail','Нажмите на точку, чтобы увидеть значения и время.');detail.id='pressure-chart-detail';
+  const showPoint=(p)=>{detail.textContent=`${dateLabel(p.dateTime)} · ${p.systolic}/${p.diastolic} мм рт. ст. · Пульс ${p.pulse===null?'не указан':p.pulse+' уд/мин'}`;};
+  const point=(cx,cy,color,p,label)=>{const c=add('circle',{cx,cy,r:4,fill:color,tabindex:0,role:'button'});const text=`${label}: ${dateLabel(p.dateTime)}; ${p.systolic}/${p.diastolic}; пульс ${p.pulse===null?'не указан':p.pulse}`;c.setAttribute('aria-label',text);const title=document.createElementNS(ns,'title');title.textContent=text;c.append(title);c.addEventListener('click',()=>showPoint(p));c.addEventListener('focus',()=>showPoint(p));c.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showPoint(p);}});};
+  for(const value of [220,160,100,40]){const y=yBP(value);add('line',{x1:left,y1:y,x2:right,y2:y,stroke:'#e6ebf2','stroke-width':1});const t=add('text',{x:left-7,y:y+4,fill:'#758296','font-size':11,'text-anchor':'end'});t.textContent=String(value);}
+  add('line',{x1:left,y1:172,x2:right,y2:172,stroke:'#cbd4e1','stroke-width':1});
+  for(const value of [225,125,25]){const y=yPulse(value);const t=add('text',{x:left-7,y:y+4,fill:'#c34b55','font-size':10,'text-anchor':'end'});t.textContent=String(value);}
+  const path=(key,color)=>{const pts=rows.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${yBP(p[key]).toFixed(1)}`).join(' ');add('path',{d:pts,fill:'none',stroke:color,'stroke-width':3,'stroke-linecap':'round','stroke-linejoin':'round'});rows.forEach((p,i)=>point(x(i),yBP(p[key]),color,p,key==='systolic'?'Верхнее давление':'Нижнее давление'));};
+  path('systolic','#3478d4');path('diastolic','#36a271');
+  let pulsePath='';let pulseOpen=false;
+  rows.forEach((p,i)=>{if(Number.isFinite(p.pulse)){pulsePath+=`${pulseOpen?'L':'M'}${x(i).toFixed(1)},${yPulse(p.pulse).toFixed(1)} `;pulseOpen=true;}else pulseOpen=false;});
+  if(pulsePath)add('path',{d:pulsePath.trim(),fill:'none',stroke:'#dc5a62','stroke-width':2.5,'stroke-linecap':'round','stroke-linejoin':'round'});
+  rows.forEach((p,i)=>{if(Number.isFinite(p.pulse))point(x(i),yPulse(p.pulse),'#dc5a62',p,'Пульс');});
+  const first=new Intl.DateTimeFormat('ru-RU',{day:'2-digit',month:'short'}).format(new Date(rows[0].dateTime));
+  const last=new Intl.DateTimeFormat('ru-RU',{day:'2-digit',month:'short'}).format(new Date(rows[rows.length-1].dateTime));
+  const t1=add('text',{x:left,y:248,fill:'#758296','font-size':12});t1.textContent=first;
+  const t2=add('text',{x:right,y:248,fill:'#758296','font-size':12,'text-anchor':'end'});t2.textContent=last;
+  host.append(svg);
+  const legend=node('div','pressure-legend');for(const [c,l]of [['#3478d4','Верхнее, мм рт. ст.'],['#36a271','Нижнее, мм рт. ст.'],['#dc5a62','Пульс, уд/мин · отдельная шкала']]){const item=node('span','pressure-legend-item');item.append(node('i','pressure-legend-dot'));item.querySelector('i').style.backgroundColor=c;item.append(document.createTextNode(l));legend.append(item);}host.append(legend);
+  host.append(detail,node('p','form-hint',`${rows.length} измерений · пропуски пульса не соединяются нулевыми значениями.`));
+}
+function renderPressure(){
+  renderPressureChart();
+  const list=$('pressure-list');list.replaceChildren();const all=[...snapshot.pressures].sort((a,b)=>b.dateTime.localeCompare(a.dateTime));
+  const cutoff=periodCutoff($('pressure-list-period')?.value||'all');const query=($('pressure-search')?.value||'').trim().toLocaleLowerCase('ru');
+  const sorted=all.filter(p=>(!cutoff||p.dateTime>=cutoff)&&(!query||[`${p.systolic}/${p.diastolic}`,`${p.systolic} / ${p.diastolic}`,p.dateTime,dateLabel(p.dateTime),p.note||''].some(v=>v.toLocaleLowerCase('ru').includes(query))));
+  $('pressure-count').textContent=`${sorted.length}${cutoff?` из ${all.length}`:''} записей`;
+  if(!sorted.length){list.append(node('p','empty',all.length?'По заданному фильтру измерений нет.':'Пока нет измерений.'));return;}
+  for(const p of sorted){const r=node('div','history-row'),l=node('div'),h=node('div','row-number',`${p.systolic} / ${p.diastolic}`),sub=node('div','row-subtitle',`${dateLabel(p.dateTime)}${p.pulse===null?'':` · Пульс ${p.pulse}`}`);l.append(h,sub);if(p.note)l.append(node('div','row-subtitle',p.note));const b=node('button','tiny-button danger','Удалить');b.type='button';b.setAttribute('aria-label',`Удалить измерение ${p.systolic}/${p.diastolic}`);b.addEventListener('click',async()=>{if(!confirm('Удалить это ТЕСТОВОЕ измерение? Действие не отменяется.'))return;try{await removeRecord('pressures',p.id);await reload();showMessage('Тестовое измерение удалено.')}catch(e){showMessage(toError(e),'error')}});r.append(l,b);list.append(r);}
+}
 function intakeStatus(i){return i.status||'active';}
+// R10 UTC chronology: offsets must be compared as actual instants, never strings.
 function eventsForIntake(i){return snapshot.intakeEvents.filter(e=>e.intakeId===i.id)
-  .sort((a,b)=>a.at.localeCompare(b.at));}
+  .sort((a,b)=>{
+    const ta=Date.parse(a.at),tb=Date.parse(b.at);
+    if(!Number.isFinite(ta)||!Number.isFinite(tb))return String(a.id).localeCompare(String(b.id));
+    return ta-tb||String(a.id).localeCompare(String(b.id));
+  });}
+function intakeAuditNeedsReview(events){
+  return events.some((e,index)=>!Number.isFinite(Date.parse(e.at))||
+    (index>0&&Date.parse(e.at)===Date.parse(events[index-1].at)));
+}
 function eventLabel(e){
   if(e.action==='marked')return 'Отмечено: '+(e.newTakenAtLocal?.slice(11)||'время не указано');
   if(e.action==='time_corrected')return 'Время: '+(e.oldTakenAtLocal?.slice(11)||'неизвестно')+' → '+e.newTakenAtLocal.slice(11);
@@ -344,13 +443,27 @@ function renderMedications(){
   for(const med of meds){
     const wrap=node('article','med-block'),row=node('div','med-row'),desc=node('div','med-details');
     const title=node('div','row-title',med.name);
-    title.prepend(node('span','med-pill','💊'));
+    title.prepend(node('span','med-pill','▱'));
     title.append(node('span','med-type',KINDS[med.kind]));
     let sub=medDescription(med);
     if(med.kind==='course')sub+=' · '+(med.from||'…')+' – '+(med.to||'…');
     desc.append(title,node('div','row-subtitle',sub));
     const existing=snapshot.intakes.filter(i=>i.medId===med.id&&i.date===day&&intakeStatus(i)==='active');
-    desc.append(node('div','row-subtitle',`За день: ${existing.length} подтверждённых приёмов`));
+    const goal=med.kind==='asNeeded'?null:medDailyTarget(med),progress=medDailyProgress(med,existing);
+    desc.append(node('div','row-subtitle',goal===null?`За день: ${existing.length} подтверждённых приёмов`:`За день: ${progress.checked}/${goal} · всего фактов: ${existing.length}`));
+    const frequencyLabel=node('label','med-frequency-label','Приёмов за день (учёт, не назначение)');
+    const frequency=node('select','med-frequency-select');
+    frequency.setAttribute('aria-label',`Кратность для ${med.name}`);
+    for(const [value,name] of [['','Не задано'],['1','1 раз'],['2','2 раза'],['3','3 раза']]){
+      const option=node('option',null,name);option.value=value;frequency.append(option);
+    }
+    frequency.value=goal===null?'':String(goal);
+    frequency.addEventListener('change',async()=>{
+      frequency.disabled=true;
+      try{await changeMedDailyTarget(med,frequency.value===''?null:Number(frequency.value));await reload();showMessage('Кратность сохранена, прежние отметки не изменены.');}
+      catch(e){await reload();showMessage(toError(e),'error')}
+    });
+    frequencyLabel.hidden=med.kind==='asNeeded';frequencyLabel.append(frequency);desc.append(frequencyLabel);
     row.append(desc);
     const controls=node('div','med-time-controls'),label=node('label','intake-time-label','Время нового приёма');
     const time=node('input','intake-time-input');time.type='time';time.step=60;
@@ -360,7 +473,7 @@ function renderMedications(){
     const confirmButton=node('button','primary intake-confirm-button','✓ Подтвердить приём');
     confirmButton.type='button';
     confirmButton.setAttribute('aria-label',`Подтвердить фактический приём ${med.name}`);
-    controls.append(confirmButton);
+    if(goal===null)controls.append(confirmButton);
     let submitting=false;
     confirmButton.addEventListener('click',async()=>{
       if(submitting)return; // Prevent double taps while an IndexedDB write is pending.
@@ -391,6 +504,40 @@ function renderMedications(){
       }
     });
     row.append(controls);wrap.append(row);
+    if(goal!==null){
+      const schedule=node('div','med-schedule-slots');schedule.setAttribute('role','group');
+      schedule.setAttribute('aria-label',`Отметки для ${med.name}`);
+      const slots=medDailySlots(med,existing);
+      for(let n=1;n<=goal;n++){
+        const taken=slots[n-1],label=node('label','med-schedule-slot'),box=node('input');
+        box.type='checkbox';box.checked=!!taken;
+        box.setAttribute('aria-label',`${med.name}: ${medSlotLabel(goal,n)}, приём ${n}`);
+        label.append(box,node('span',null,`${medSlotLabel(goal,n)}${taken?' · '+(takenTime(taken)||'время неизвестно'):''}`));
+        schedule.append(label);
+        let processing=false;
+        box.addEventListener('change',async()=>{
+          if(processing){box.checked=!!taken;return}
+          processing=true;box.disabled=true;
+          try{
+            if(taken){
+              if(!confirm(`Отменить отметку «${medSlotLabel(goal,n)}»? История останется.`)){box.checked=true;return}
+              const stamp=new Date().toISOString();
+              await changeIntake('cancelled',{...taken,status:'cancelled',cancelledAt:stamp,updatedAt:stamp},taken);
+            }else{
+              if(!validClock(time.value))throw Error('Укажите фактическое время');
+              const takenAtLocal=`${day}T${time.value}`;
+              if(isFutureIntake(takenAtLocal))throw Error('Время в будущем');
+              const record={id:crypto.randomUUID(),medId:med.id,date:day,takenAtLocal,
+                markedAt:new Date().toISOString(),status:'active',dailySlot:n};
+              validateIntake(record);await changeIntake('marked',record);
+            }
+            await reload();showMessage('Отметка сохранена с фактическим временем.');
+          }catch(e){await reload();showMessage(toError(e),'error')}
+          finally{processing=false;box.disabled=false}
+        });
+      }
+      wrap.append(schedule);
+    }
     const records=snapshot.intakes.filter(i=>i.medId===med.id&&i.date===day)
       .sort((a,b)=>(a.takenAtLocal||'').localeCompare(b.takenAtLocal||'')||a.markedAt.localeCompare(b.markedAt));
     const recList=node('div','med-record-list');
@@ -432,6 +579,7 @@ function renderMedications(){
       }
       item.append(header);
       const audit=eventsForIntake(i);
+      if(intakeAuditNeedsReview(audit))item.append(node('div','audit-event','Проверка истории: события имеют одинаковое или некорректное время. Порядок не подтверждён.'));
       if(!audit.length)item.append(node('div','row-subtitle','Исходная история изменений недоступна (старый формат).'));
       for(const event of audit)item.append(node('div','audit-event',eventLabel(event)));
       recList.append(item);
@@ -445,9 +593,106 @@ function renderMedications(){
   for(const i of ordered){
     const med=snapshot.medications.find(m=>m.id===i.medId);
     const row=node('div','overview-row');
-    row.append(node('span','row-title',med?.name||'Учебный препарат не найден'),
+    row.append(node('span','row-title',med?.name||'Препарат не найден'),
       node('span','row-subtitle',`${intakeLabel(i)} · ${intakeStatus(i)==='active'?'✓':'отменено'}`));
     history.append(row);
+  }
+}
+
+function renderMedicationHistory(){
+  const host=$('intake-list');if(!host)return;host.replaceChildren();
+  const kind=$('med-history-kind')?.value||'regular';
+  const periodControl=$('med-history-period');
+  // Approved type-specific filters: permanent 7d, courses 12 calendar months,
+  // PRN 1/3 calendar months. Filters affect display only; never delete records.
+  const allowed={regular:['7'],course:['365'],asNeeded:['30','90'],all:['7','30','90','365','all']}[kind]||['7'];
+  if(periodControl){
+    for(const option of periodControl.options)option.disabled=!allowed.includes(option.value);
+    if(!allowed.includes(periodControl.value))periodControl.value=allowed[0];
+  }
+  const range=periodControl?.value||allowed[0];
+  const now=new Date(),todayDay=dateLocal(now);
+  const calendarCutoff=(months)=>{
+    const d=new Date(now.getFullYear(),now.getMonth()-months,now.getDate());return dateLocal(d);
+  };
+  const cutoff=range==='all'?null:range==='365'?calendarCutoff(12):
+    range==='90'?calendarCutoff(3):range==='30'?calendarCutoff(1):
+    dateLocal(new Date(now.getFullYear(),now.getMonth(),now.getDate()-6));
+  const state=$('intake-filter')?.value||'all';
+  const year=String(now.getFullYear()),yearStart=year+'-01-01',yearEnd=year+'-12-31';
+  const medsById=new Map(snapshot.medications.map(m=>[m.id,m]));
+  const formatDay=d=>d&&/^\d{4}-\d{2}-\d{2}$/.test(d)?`${d.slice(8,10)}.${d.slice(5,7)}.${d.slice(0,4)}`:(d||'не указана');
+  const addEventAudit=(item,i)=>{
+    const events=eventsForIntake(i);
+    if(intakeAuditNeedsReview(events))item.append(node('div','audit-event','Порядок событий не подтверждён: одинаковое или некорректное время.'));
+    if(!events.length)item.append(node('div','audit-event','Старая запись: исходный журнал событий недоступен; время не подставлялось.'));
+    for(const event of events)item.append(node('div','audit-event',`${new Intl.DateTimeFormat('ru-RU',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(event.at))} · ${eventLabel(event)}`));
+  };
+  if(kind==='course'){
+    // One card per existing medication/course ID, including zero marked intakes.
+    // A repeat course is never inferred from old intake timestamps.
+    const dated=snapshot.medications.filter(m=>m.kind==='course'&&m.from&&m.to&&
+      m.to>=(cutoff||'0000-01-01')&&m.from<=todayDay);
+    const undated=snapshot.medications.filter(m=>m.kind==='course'&&(!m.from||!m.to));
+    const withinYear=m=>m.to>=yearStart&&m.from<=yearEnd;
+    const current=dated.filter(withinYear).sort((a,b)=>b.from.localeCompare(a.from));
+    const previous=dated.filter(m=>!withinYear(m)).sort((a,b)=>b.from.localeCompare(a.from));
+    host.append(node('p','form-hint','Курсовые · 1 год (12 календарных месяцев). Каждый курс с датами отображается даже без отметок. Отсутствие отметки не считается пропуском.'));
+    const group=(title,meds,uncertain=false)=>{
+      if(!meds.length)return;
+      host.append(node('h4','history-group-heading',title));
+      for(const med of meds){
+        const details=node('details','intake-record course-history-card');
+        const header=node('summary','course-history-summary');
+        header.append(node('strong','',med.name));
+        header.append(node('div','row-subtitle',`Начало: ${formatDay(med.from)} · окончание: ${formatDay(med.to)}`));
+        if(!uncertain&&withinYear(med))header.append(node('span','history-year-badge',`Курс календарного года · ${year}`));
+        details.append(header);
+        if(uncertain)details.append(node('p','form-hint','Даты курса не указаны. Принадлежность к последним 12 месяцам не подтверждена; историю нужно проверить.'));
+        else{
+          const period=med.from>todayDay?'Даты курса ещё не наступили':med.to<todayDay?'Срок по датам завершён':'В пределах указанных дат';
+          details.append(node('p','form-hint',period+' · это не подтверждает фактический приём или медицинское завершение курса.'));
+        }
+        const records=snapshot.intakes.filter(i=>i.medId===med.id&&(!cutoff||i.date>=cutoff)&&
+          (state==='all'||intakeStatus(i)===state)).sort((a,b)=>b.date.localeCompare(a.date)||
+          (b.takenAtLocal||'').localeCompare(a.takenAtLocal||''));
+        const confirmed=records.filter(i=>intakeStatus(i)==='active').length;
+        details.append(node('p','row-subtitle',`Подтверждённых отметок: ${confirmed}`));
+        if(!records.length)details.append(node('p','empty','Отметок нет или они вне выбранного периода. Это не подтверждённый пропуск.'));
+        for(const i of records){
+          const entry=node('div','course-history-entry');
+          entry.append(node('strong','',`${formatDay(i.date)} · ${intakeStatus(i)==='active'?'Приём подтверждён':'Отметка отменена'}`));
+          if(i.takenAtLocal)entry.append(node('div','row-subtitle',`Фактическое время: ${i.takenAtLocal.slice(11)}`));
+          addEventAudit(entry,i);details.append(entry);
+        }
+        host.append(details);
+      }
+    };
+    group(`Курсы календарного ${year} года`,current);
+    group('Другие курсы за последние 12 месяцев',previous);
+    group('Даты требуют уточнения (вне подтверждённой выборки)',undated,true);
+    if(!dated.length&&!undated.length)host.append(node('p','empty','Курсов за выбранный период нет.'));
+    return;
+  }
+  const rows=[...snapshot.intakes].filter(i=>{
+    const med=medsById.get(i.medId);if(!med)return false;
+    const day=i.takenAtLocal?.slice(0,10)||i.date;
+    // PRN history is actual active taken episodes, not cancelled plans.
+    return (kind==='all'||med.kind===kind)&&(!cutoff||day>=cutoff)&&
+      (kind==='asNeeded'?intakeStatus(i)==='active':state==='all'||intakeStatus(i)===state);
+  }).sort((a,b)=>(b.takenAtLocal||b.date).localeCompare(a.takenAtLocal||a.date)||b.markedAt.localeCompare(a.markedAt));
+  const label=kind==='regular'?'Постоянные · последние 7 дней':kind==='asNeeded'?`Ситуативные · ${range==='90'?'3 месяца':'1 месяц'} · фактические приёмы`:`История · ${rows.length} записей`;
+  host.append(node('p','form-hint',label+' · отсутствие отметки не считается подтверждённым пропуском.'));
+  if(!rows.length){host.append(node('p','empty','За выбранный период записей нет.'));return;}
+  for(const i of rows){
+    const med=medsById.get(i.medId),item=node('article',`intake-record ${intakeStatus(i)==='cancelled'?'cancelled':''}`);
+    const header=node('div','intake-record-head'),main=node('div');
+    main.append(node('strong','',`${med.name} · ${intakeStatus(i)==='active'?'Приём подтверждён':'Отметка отменена'}`));
+    const stamp=i.takenAtLocal?dateLabel(i.takenAtLocal):`${i.date} · время неизвестно`;
+    main.append(node('div','row-subtitle',`${stamp} · ${KINDS[med.kind]}`));
+    if(Number.isInteger(i.dailySlot))main.append(node('div','row-subtitle',`Слот: ${medSlotLabel(medDailyTarget(med)||i.dailySlot,i.dailySlot)}`));
+    if(med.kind==='asNeeded'&&typeof i.reason==='string'&&i.reason.trim())main.append(node('div','row-subtitle',`Причина: ${i.reason.trim()}`));
+    header.append(main);item.append(header);addEventAudit(item,i);host.append(item);
   }
 }
 
@@ -461,8 +706,10 @@ function renderOverview(){
   if(!snapshot.medications.length)ms.append(node('p','empty','Пока нет препаратов.'));
   for(const med of snapshot.medications.slice(0,7)){
     const active=snapshot.intakes.filter(i=>i.medId===med.id&&i.date===day&&intakeStatus(i)==='active');
-    const r=node('div','overview-row');r.append(node('span','row-title',med.name),
-      node('span','row-subtitle',active.length?`✓ Отмечено: ${active.length}`:'○ Нет отметки'));
+    const r=node('div','overview-row'),progress=medDailyProgress(med,active);
+    const summary=progress.goal===null?(active.length?`✓ Отмечено: ${active.length}`:'○ Нет отметки'):
+      `Отметки: ${progress.checked}/${progress.goal} · фактов: ${progress.actual}`;
+    r.append(node('span','row-title',med.name),node('span','row-subtitle',summary));
     ms.append(r);
   }
 }
@@ -475,12 +722,14 @@ function validInstant(s){return typeof s==='string'&&/^\d{4}-\d{2}-\d{2}T/.test(
 function validId(s){return typeof s==='string'&&/^[A-Za-z0-9_-]{8,100}$/.test(s)}
 function validatePressure(p){if(!p||typeof p!=='object'||!validId(p.id)||p.arm!=='right'||!validDateTime(p.dateTime)||!validInstant(p.createdAt)||!Number.isInteger(p.systolic)||p.systolic<50||p.systolic>300||!Number.isInteger(p.diastolic)||p.diastolic<30||p.diastolic>200||p.systolic<=p.diastolic||!(p.pulse===null||(Number.isInteger(p.pulse)&&p.pulse>=25&&p.pulse<=250))||typeof p.note!=='string'||p.note.length>250)throw Error('Некорректная запись давления');}
 function validateMed(m){
-  if(!m||typeof m!=='object'||!validId(m.id)||typeof m.name!=='string'||(m.name.trim().length<2 || /[<>\u0000-\u001f]/.test(m.name))||m.name.length>100||typeof m.dose!=='string'||m.dose.length>60||!Object.hasOwn(KINDS,m.kind)||!validInstant(m.createdAt)||!(m.from===null||validDate(m.from))||!(m.to===null||validDate(m.to))||(m.from&&m.to&&m.from>m.to))throw Error('Некорректная синтетическая запись препарата');
+  if(!m||typeof m!=='object'||!validId(m.id)||typeof m.name!=='string'||(m.name.trim().length<2 || /[<>\u0000-\u001f]/.test(m.name))||m.name.length>100||typeof m.dose!=='string'||m.dose.length>60||!Object.hasOwn(KINDS,m.kind)||!validInstant(m.createdAt)||!(m.from===null||validDate(m.from))||!(m.to===null||validDate(m.to))||(m.from&&m.to&&m.from>m.to))throw Error('Некорректная запись препарата');
   validatedMedExtension(m);
+  medDailyTarget(m);
 }
 function validateIntake(i){
   if(!i||typeof i!=='object'||!validId(i.id)||!validId(i.medId)||!validDate(i.date)||!validInstant(i.markedAt)||
     (i.takenAtLocal!==undefined&&(!validDateTime(i.takenAtLocal)||!i.takenAtLocal.startsWith(i.date+'T')))||
+    (i.dailySlot!==undefined&&(!Number.isInteger(i.dailySlot)||i.dailySlot<1||i.dailySlot>3))||
     (i.updatedAt!==undefined&&!validInstant(i.updatedAt))||
     (i.status!==undefined&&!['active','cancelled'].includes(i.status))||
     (i.cancelledAt!==undefined&&!validInstant(i.cancelledAt))||
@@ -595,9 +844,14 @@ function validateBackupData(data,includeLocal=true){
   if(total>50000)throw Error('Превышено допустимое количество записей');
   const meds=new Set([...(includeLocal?snapshot.medications:[]),...data.medications].map(x=>x.id));
   const intakes=new Map([...(includeLocal?snapshot.intakes:[]),...data.intakes].map(x=>[x.id,x]));
-  const times=new Map();
+  const times=new Map(),seenSlots=new Map();
   for(const i of [...(includeLocal?snapshot.intakes:[]),...data.intakes]){
     if(!meds.has(i.medId))throw Error('Отметка без препарата');
+    if(intakeStatus(i)==='active'&&i.dailySlot!==undefined){
+      const key=i.medId+'|'+i.date+'|'+i.dailySlot;
+      if(seenSlots.has(key)&&seenSlots.get(key)!==i.id)throw Error('Повтор номера приёма в копии');
+      seenSlots.set(key,i.id);
+    }
     if(intakeStatus(i)!=='active'||!i.takenAtLocal)continue;
     const key=i.medId+'|'+i.takenAtLocal;
     if(times.has(key)&&times.get(key)!==i.id)throw Error('Повтор активного приёма в то же время');
@@ -633,7 +887,13 @@ function atomicMerge(data){return new Promise((resolve,reject)=>{
   req.onsuccess=()=>{
     const existingTimes=new Map(req.result.filter(i=>intakeStatus(i)==='active'&&i.takenAtLocal)
       .map(i=>[i.medId+'|'+i.takenAtLocal,i.id]));
+    const existingSlots=new Map(req.result.filter(i=>intakeStatus(i)==='active'&&i.dailySlot!==undefined)
+      .map(i=>[i.medId+'|'+i.date+'|'+i.dailySlot,i.id]));
     for(const i of data.intakes){
+      if(intakeStatus(i)==='active'&&i.dailySlot!==undefined){
+        const other=existingSlots.get(i.medId+'|'+i.date+'|'+i.dailySlot);
+        if(other&&other!==i.id){fail('Повтор номера приёма относительно текущей базы');return;}
+      }
       if(intakeStatus(i)==='active'&&i.takenAtLocal){
         const other=existingTimes.get(i.medId+'|'+i.takenAtLocal);
         if(other&&other!==i.id){fail('Повтор времени относительно текущей базы');return;}
@@ -660,6 +920,8 @@ async function onMedSubmit(e){
   const p={id:crypto.randomUUID(),name:$('med-name').value.trim(),dose:$('med-dose').value.trim(),kind:$('med-kind').value,
     from:$('course-from').value||null,to:$('course-to').value||null,createdAt:new Date().toISOString()};
   if(p.kind!=='course'){p.from=null;p.to=null;}
+  const rawTarget=$('med-daily-target').value;
+  if(rawTarget!==''&&p.kind!=='asNeeded')p.dailyIntakes=Number(rawTarget);
   const raw=$('med-strength').value.trim(),strength=raw===''?null:Number(raw),unit=$('med-unit').value,form=$('med-form-factor').value;
   if(raw!==''||unit!==''||form!=='')p.pae04v021={strength,unit,form};
   try{
@@ -707,6 +969,7 @@ function syncImportReady(){
   $('import-button').disabled=!(pendingImport?.checkpoint&&$('checkpoint-ack').checked);
 }
 async function previewImport(e){
+  
   const sequence=++importPreviewSequence;
   pendingImport=null;resetImportCheckpoint();
   const view=$('import-preview');view.replaceChildren();const file=e.target.files?.[0];if(!file)return;
@@ -783,7 +1046,7 @@ async function applyImport(){
     safetyNeedsNewCheck();
     pendingImport=null;resetImportCheckpoint();$('import-file').value='';
     $('import-preview').replaceChildren(node('div',null,`Добавлено ${count} записей; старые записи не изменены.`));
-    await reload();showMessage('Учебная резервная копия импортирована.');
+    await reload();showMessage('Резервная копия импортирована.');
   }catch(e){showMessage('Импорт прерван: '+toError(e),'error');}
   finally{syncImportReady();}
 }
@@ -873,5 +1136,5 @@ async function init(){
     if(medSubmit)medSubmit.disabled=true;
     showMessage('Добавление лекарств временно заблокировано: '+toError(err),'error');
   }
-document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.page)));document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.go)));connectStatus();$('pressure-datetime').value=dateTimeLocal(new Date());$('intake-date').value=today();setupWheelPicker();setupMobileKeyboardUI();$('pressure-form').addEventListener('submit',onPressureSubmit);$('med-form').addEventListener('submit',onMedSubmit);$('intake-date').addEventListener('change',renderMedications);$('pressure-filter').addEventListener('change',renderPressure);$('pressure-search').addEventListener('input',renderPressure);$('intake-filter').addEventListener('change',renderMedications);$('med-search').addEventListener('input',renderMedications);$('catalog-search').addEventListener('input',e=>{if(["Эдарби", "Эспиро", "Липримар", "Беталок ЗОК", "Капотен", "Atomy HemoHIM", "Atomy Korean Red Ginseng Jelly", "Atomy Turmacin MSM", "Atomy rTG Omega-3", "Atomy Probiotics 10+"].includes(e.target.value)){$('med-name').value=e.target.value;$('med-name').dispatchEvent(new Event('input',{bubbles:true}));}});$('med-kind').addEventListener('change',e=>{$('course-fields').hidden=e.target.value!=='course'});$('safety-check').addEventListener('click',safeIntegrityCheckOnClick);$('export-button').addEventListener('click',exportBackup);$('verify-file').addEventListener('change',verifyDownloadedBackup);$('import-file').addEventListener('change',previewImport);$('checkpoint-button').addEventListener('click',downloadImportCheckpoint);$('checkpoint-ack').addEventListener('change',syncImportReady);$('import-button').addEventListener('click',applyImport);try{db=await openDB();await reload();connectStatus('ready');await reportBrowserStorage();try{await checkLocalIntegrity()}catch(err){showMessage('Локальная база не прошла проверку: '+toError(err),'error')}if('serviceWorker'in navigator){try{await navigator.serviceWorker.register('./sw.js');}catch(err){showMessage(`Локальная база работает, но офлайн-кэш не включился: ${toError(err)}`,'warn')}}}catch(e){connectStatus('error');showMessage(`Не удалось открыть локальную базу: ${toError(e)}`,'error');document.querySelectorAll('form button[type=submit],#export-button,#import-button').forEach(b=>b.disabled=true)}}
+document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.page)));document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.go)));connectStatus();$('pressure-datetime').value=dateTimeLocal(new Date());$('intake-date').value=today();setupWheelPicker();setupMobileKeyboardUI();$('pressure-form').addEventListener('submit',onPressureSubmit);$('med-form').addEventListener('submit',onMedSubmit);$('intake-date').addEventListener('change',renderMedications);$('pressure-list-period').addEventListener('change',renderPressure);$('pressure-chart-period').addEventListener('change',renderPressure);$('pressure-search').addEventListener('input',renderPressure);$('intake-filter').addEventListener('change',renderMedicationHistory);$('med-history-kind').addEventListener('change',e=>{$('med-history-period').value=({regular:'7',course:'365',asNeeded:'30',all:'all'})[e.target.value];renderMedicationHistory()});$('med-history-period').addEventListener('change',renderMedicationHistory);$('med-search').addEventListener('input',renderMedications);$('catalog-search').addEventListener('input',e=>{if(["Эдарби", "Эспиро", "Липримар", "Беталок ЗОК", "Капотен", "Atomy HemoHIM", "Atomy Korean Red Ginseng Jelly", "Atomy Turmacin MSM", "Atomy rTG Omega-3", "Atomy Probiotics 10+"].includes(e.target.value)){$('med-name').value=e.target.value;$('med-name').dispatchEvent(new Event('input',{bubbles:true}));}});$('med-kind').addEventListener('change',e=>{$('course-fields').hidden=e.target.value!=='course';const schedule=$('med-daily-target').closest('label');schedule.hidden=e.target.value==='asNeeded';if(e.target.value==='asNeeded')$('med-daily-target').value=''});$('safety-check').addEventListener('click',safeIntegrityCheckOnClick);$('export-button').addEventListener('click',exportBackup);$('verify-file').addEventListener('change',verifyDownloadedBackup);$('import-file').addEventListener('change',previewImport);$('checkpoint-button').addEventListener('click',downloadImportCheckpoint);$('checkpoint-ack').addEventListener('change',syncImportReady);$('import-button').addEventListener('click',applyImport);try{db=await openDB();await reload();connectStatus('ready');await reportBrowserStorage();try{await checkLocalIntegrity()}catch(err){showMessage('Локальная база не прошла проверку: '+toError(err),'error')}if('serviceWorker'in navigator){try{await navigator.serviceWorker.register('./sw.js');}catch(err){showMessage(`Локальная база работает, но офлайн-кэш не включился: ${toError(err)}`,'warn')}}}catch(e){connectStatus('error');showMessage(`Не удалось открыть локальную базу: ${toError(e)}`,'error');document.querySelectorAll('form button[type=submit],#export-button,#import-button').forEach(b=>b.disabled=true)}}
 document.addEventListener('DOMContentLoaded',init);

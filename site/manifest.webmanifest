@@ -2,7 +2,7 @@
   "id": "./",
   "name": "Health Tracker · Личный журнал",
   "short_name": "Health Tracker",
-  "description": "Личная бета v0.6.1.2. Давление, пульс и приём лекарств — локально на iPhone, без напоминаний.",
+  "description": "Личная бета iPhone UX v2.3: давление, пульс и приём лекарств. Данные хранятся локально на устройстве.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

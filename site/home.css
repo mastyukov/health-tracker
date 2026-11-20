@@ -106,3 +106,7 @@ body .brand small{letter-spacing:.07em}
   background:#edf8f3;border-color:#badacb;color:#21664c
 }
 @media(max-width:355px){.pae04-offline-status{font-size:13px;padding:8px 10px}}
+
+/* CP-UX v2.3 Today summary */
+.ui01-home .ui01-reading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}.ui01-home .ui01-note{margin:10px 0;color:#718096;font-size:12px;line-height:1.5}.ui01-home .ui01-med-description{min-width:130px;flex:1}.ui01-home-slots{flex:0 1 auto}.ui01-home-slot input{min-width:19px;min-height:19px}
+.ui01-tonometer-icon{display:inline-grid;place-items:center;width:30px;height:30px;margin-right:8px;color:#3478d4;vertical-align:middle}.ui01-tonometer-icon svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.ui01-average-card{display:flex;flex-direction:column;gap:7px}.ui01-kind-icon{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;margin-right:7px;font-size:20px;font-weight:800;vertical-align:middle}.ui01-kind-icon.kind-regular{color:#2d9b68}.ui01-kind-icon.kind-course{color:#7857c8}.ui01-kind-icon.kind-asNeeded{color:#d4952d}

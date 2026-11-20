@@ -1,7 +1,7 @@
 'use strict';
 /* PAE-04 CP-OFFLINE01: immutable app shell. Never accesses IndexedDB. */
 const CACHE_PREFIX='pae04-ht-stable-candidate-synthetic-schema1-cache-';
-const CACHE=CACHE_PREFIX+'personal-v0612-localdbstatus-20261117';
+const CACHE=CACHE_PREFIX+'personal-v23-r3-20261120';
 const SHELL=new URL('./index.html',self.registration.scope).href;
 const FILES=[
   './','./index.html','./app.js','./styles.css','./home.js','./home.css',
@@ -14,10 +14,10 @@ const FILES=[
 self.addEventListener('install',event=>{
   event.waitUntil((async()=>{
     const cache=await caches.open(CACHE);
-    await cache.addAll(FILES.map(file=>new Request(new URL(file,self.registration.scope),{cache:"reload"})));
+    await cache.addAll(FILES);
     // Never activate a partially cached release.
     for(const path of ['./','./index.html','./app.js','./home.js',
-                       './med_guard.mjs','./personal_adapter.js','./offline_status.js']){
+                       './med_guard.mjs','./offline_status.js']){
       if(!(await cache.match(new URL(path,self.registration.scope).href))){
         throw new Error('CP-OFFLINE01 missing app shell asset: '+path);
       }
@@ -29,7 +29,13 @@ self.addEventListener('install',event=>{
 self.addEventListener('activate',event=>{
   // Preserve previous version caches for tabs still controlled by an older SW.
   // These caches contain only static app assets, never medicine or pressure data.
-  event.waitUntil(self.clients.claim());
+  event.waitUntil((async()=>{
+    const keys=await caches.keys();
+    // Keep two preceding static caches for older Safari tabs; never delete data stores.
+    const prior=keys.filter(key=>key.startsWith(CACHE_PREFIX)&&key!==CACHE);
+    for(const key of prior.slice(0,Math.max(0,prior.length-2)))await caches.delete(key);
+    await self.clients.claim();
+  })());
 });
 
 async function matchAppShell(request){
@@ -49,7 +55,7 @@ function offlineUnavailable(){
     '<body style="font:18px -apple-system,system-ui;padding:25px;line-height:1.5">'+
     '<h1>Офлайн-копия ещё не готова</h1>'+
     '<p>Включите интернет, откройте Health Tracker и дождитесь сообщения '+
-    '«Офлайн-копия готова» в разделе «Копии данных».</p>'+
+    '«Офлайн-копия готова» в разделе «Настройки».</p>'+
     '<p>Не очищайте Safari и не удаляйте приложение: данные хранятся на устройстве.</p>'+
     '</body></html>',
     {status:503,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}}
