@@ -217,10 +217,58 @@
       sync();
     });
   }
+  function setupMedicationSections(){
+    const list=el('med-list'),history=el('intake-list'),kind=el('med-history-kind');
+    const panel=list?.closest('article.panel');
+    if(!list||!history||!panel||!kind)return;
+    const divider=panel.querySelector('.section-divider');
+    const histHead=panel.querySelector('.v05-intake-head');
+    const todayHead=panel.querySelector('.panel-heading');
+    if(!divider||!histHead||!todayHead)return;
+    const tabs=element('div','v232-med-tabs');
+    tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label','Разделы лекарств');
+    const todayPane=element('section','v232-med-pane'),historyPane=element('section','v232-med-pane');
+    todayPane.id='v232-meds-today';historyPane.id='v232-meds-history';
+    todayPane.setAttribute('role','tabpanel');historyPane.setAttribute('role','tabpanel');
+    const controls=[['today','Сегодня',todayPane],['history','История приёма',historyPane]];
+    for(const [key,title,pane] of controls){
+      const button=element('button','v232-med-tab',title);button.type='button';
+      button.dataset.medView=key;button.id='v232-tab-'+key;
+      button.setAttribute('role','tab');button.setAttribute('aria-controls',pane.id);
+      pane.setAttribute('aria-labelledby',button.id);
+      tabs.append(button);
+      button.addEventListener('click',()=>{
+        for(const [v,_,p] of controls){
+          const selected=v===key;p.hidden=!selected;
+          tabs.querySelector('[data-med-view="'+v+'"]').setAttribute('aria-selected',String(selected));
+        }
+      });
+    }
+    const moving=[];let next=todayHead;
+    while(next&&next!==divider){moving.push(next);next=next.nextElementSibling;}
+    if(next!==divider||moving.length<2)return;
+    for(const n of moving)todayPane.append(n);
+    historyPane.append(histHead,history);divider.remove();
+    panel.prepend(tabs,todayPane,historyPane);
+    tabs.querySelector('[data-med-view="today"]').click();
+    const kindTabs=element('div','v232-med-kind-tabs');
+    kindTabs.setAttribute('role','group');kindTabs.setAttribute('aria-label','Категория истории');
+    const options=[['regular','∞ Постоянные'],['course','▦ Курсовые'],['asNeeded','ϟ Ситуативные']];
+    const sync=()=>kindTabs.querySelectorAll('button').forEach(button=>{
+      button.setAttribute('aria-pressed',String(button.dataset.kind===kind.value));
+    });
+    for(const [value,title] of options){
+      const button=element('button','v232-kind-button',title);button.type='button';button.dataset.kind=value;
+      button.addEventListener('click',()=>{kind.value=value;kind.dispatchEvent(new Event('change',{bubbles:true}));sync();});
+      kindTabs.append(button);
+    }
+    kind.addEventListener('change',sync);sync();historyPane.prepend(kindTabs);
+  }
   document.addEventListener('DOMContentLoaded',()=>{
     readFont();
     applyDisplaySettings();
     setupPressurePeriods();
+    setupMedicationSections();
     el('display-theme').addEventListener('change',e=>{try{localStorage.setItem(THEME_KEY,e.target.value)}catch(_){}applyDisplaySettings();});
     el('compact-view').addEventListener('change',e=>{try{localStorage.setItem(COMPACT_KEY,String(e.target.checked))}catch(_){}applyDisplaySettings();});
     el('ui01-font-less').addEventListener('click',()=>adjustFont(-1));

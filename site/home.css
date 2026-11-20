@@ -143,3 +143,8 @@ body .brand small{letter-spacing:.07em}
  .ui01-home .ui01-med-row:has(.ui01-home-slots){flex-wrap:wrap}
  .ui01-home .ui01-home-slots{width:100%;justify-content:flex-start}
 }
+
+/* iPhone UX v2.3.2: preserve large targets, use compact cards */
+.ui01-home .ui01-med-group{border-radius:18px}
+.ui01-home .ui01-wide-button{min-height:48px}
+@media(max-width:740px){.ui01-home .ui01-med-group{padding:13px 15px}.ui01-home .ui01-card{margin-bottom:10px}.ui01-home .ui01-med-row{padding:8px 0}}
