@@ -232,3 +232,30 @@ body.wheel-modal-open{overflow:hidden}
 .compact-view .panel{padding:16px}.compact-view .history-row,.compact-view .med-row,.compact-view .overview-row{padding:9px 0}.compact-view .ui01-card{padding:16px}.compact-view .ui01-med-row{padding:8px 0}
 :root[data-appearance="dark"]{color-scheme:dark;background:#111923;color:#e8eef6}html[data-appearance="dark"] body{background:#111923;color:#e8eef6}html[data-appearance="dark"] .topbar,html[data-appearance="dark"] .sidebar,html[data-appearance="dark"] .panel,html[data-appearance="dark"] .stat-card,html[data-appearance="dark"] .ui01-card{background:#1b2634;border-color:#324155;color:#e8eef6}html[data-appearance="dark"] .nav-item{color:#bdc9d8}html[data-appearance="dark"] .nav-item.active{background:#243958;color:#9fc1ff}html[data-appearance="dark"] .row-title,html[data-appearance="dark"] .ui01-med-name,html[data-appearance="dark"] .ui01-card-title{color:#e8eef6}html[data-appearance="dark"] input,html[data-appearance="dark"] select,html[data-appearance="dark"] textarea{background:#121b27;color:#e8eef6;border-color:#45556b}html[data-appearance="dark"] .history-row,html[data-appearance="dark"] .med-row,html[data-appearance="dark"] .overview-row{border-color:#324155}html[data-appearance="dark"] .pressure-point-detail{color:#d5e0ee}
 @media(prefers-color-scheme:dark){:root:not([data-appearance]){color-scheme:dark;background:#111923;color:#e8eef6}html:not([data-appearance]) body{background:#111923;color:#e8eef6}html:not([data-appearance]) .topbar,html:not([data-appearance]) .sidebar,html:not([data-appearance]) .panel,html:not([data-appearance]) .stat-card,html:not([data-appearance]) .ui01-card{background:#1b2634;border-color:#324155;color:#e8eef6}html:not([data-appearance]) .nav-item{color:#bdc9d8}html:not([data-appearance]) .nav-item.active{background:#243958;color:#9fc1ff}html:not([data-appearance]) .row-title,html:not([data-appearance]) .ui01-med-name,html:not([data-appearance]) .ui01-card-title{color:#e8eef6}html:not([data-appearance]) input,html:not([data-appearance]) select,html:not([data-appearance]) textarea{background:#121b27;color:#e8eef6;border-color:#45556b}}
+
+/* PAE-04 iPhone UX v2.3 approved controls / read-only presentation. */
+.v23-storage-note{margin:12px 0 17px;padding:12px 14px;border:1px solid #d5e4f8;border-radius:13px;background:#eff5ff;color:#365675;font-size:13px;line-height:1.45}
+.v23-period-control{display:flex;flex-direction:column;align-items:stretch;width:100%;gap:8px}
+.v23-period-caption{font-size:12px;font-weight:650;color:#63768d}
+.v23-segmented{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;border-radius:13px;padding:4px;background:#edf2f7;max-width:100%}
+body #page-pressure .v23-segmented button{appearance:none;min-width:0;min-height:44px;border:0;border-radius:10px;background:transparent;color:#60738b;font:inherit;font-weight:650;font-size:12px;padding:6px 3px;line-height:1.2;white-space:normal}
+body #page-pressure .v23-segmented button[aria-pressed="true"]{background:#fff;color:#24578b;box-shadow:0 2px 6px #20375617}
+.v23-segmented button:focus-visible{outline:2px solid #3279d5;outline-offset:1px}
+.v23-visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+#page-pressure .pressure-chart-panel .panel-heading{display:flex;flex-direction:column;align-items:stretch;gap:10px}
+#page-pressure .v05-filter-actions{flex-wrap:wrap;justify-content:space-between;align-items:end;gap:8px}
+#page-pressure .v23-period-control{flex:1 1 270px}
+#page-pressure .pressure-legend-item{font-size:12px}
+@media(max-width:740px){
+ body .sidebar .nav-item{font-size:calc(11px * var(--ht-home-scale));gap:3px;min-width:0;padding:8px 1px;line-height:1.25;min-height:61px}
+ body .sidebar .nav-icon{font-size:21px}
+ body .main{padding:12px 13px 22px}
+ body .page-head{margin:18px 0 16px}
+ body .page-head h1{font-size:27px}
+ #page-pressure .pressure-chart-panel{padding:15px}
+ #page-pressure .pressure-chart-panel .panel-heading h2{font-size:17px}
+ .v23-segmented button{font-size:11.5px}
+}
+html[data-appearance="dark"] .v23-segmented{background:#263548}
+html[data-appearance="dark"] body #page-pressure .v23-segmented button[aria-pressed="true"]{background:#374c68;color:#e8f3ff}
+@media(prefers-color-scheme:dark){html:not([data-appearance]) .v23-segmented{background:#263548}html:not([data-appearance]) body #page-pressure .v23-segmented button[aria-pressed="true"]{background:#374c68;color:#e8f3ff}}

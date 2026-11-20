@@ -7,7 +7,7 @@
   const FONT_KEY = 'pae04-cp-ui01-font-size-v1';
   const THEME_KEY = 'pae04-iphone-theme-v1';
   const COMPACT_KEY = 'pae04-iphone-compact-v1';
-  const SCALES = [1, 1.07, 1.14, 1.22, 1.32];
+  const SCALES = [0.90, 0.96, 1, 1.14, 1.28];
   const TYPE_NAMES = {regular:'Постоянные',course:'Курсовые',asNeeded:'Ситуативные'};
   let scaleIndex=2;
   let dayLast='';
@@ -50,8 +50,8 @@
     if(more)more.disabled=scaleIndex===SCALES.length-1;
   }
   function applyDisplaySettings(){
-    let theme='system',compact=false;
-    try{theme=localStorage.getItem(THEME_KEY)||'system';compact=localStorage.getItem(COMPACT_KEY)==='true';}catch(_){}
+    let theme='system',compact=true;
+    try{theme=localStorage.getItem(THEME_KEY)||'system';compact=(localStorage.getItem(COMPACT_KEY)??'true')==='true';}catch(_){}
     if(!['system','light','dark'].includes(theme))theme='system';
     if(theme==='system')document.documentElement.removeAttribute('data-appearance');
     else document.documentElement.setAttribute('data-appearance',theme);
@@ -68,7 +68,7 @@
     const holder=el('ui01-pressure');if(!holder)return;
     holder.replaceChildren();
     const heading=element('h2','ui01-card-title','Последний замер');
-    const icon=element('span','ui01-tonometer-icon');icon.innerHTML='<svg viewBox="0 0 32 32" aria-hidden="true"><rect x="6" y="3" width="20" height="24" rx="4"/><rect x="10" y="7" width="12" height="8" rx="1"/><path d="M12 11h2l1.5-2 2 4 1.5-2H21M11 20h2m6 0h2M26 20h2v5h-2"/></svg>';heading.prepend(icon);
+    const icon=element('span','ui01-tonometer-icon');icon.innerHTML='<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="11" y="5" width="34" height="46" rx="7"/><rect x="17" y="12" width="22" height="17" rx="2"/><path d="M20 22h4l3-5 4 9 3-4h3"/><circle cx="28" cy="40" r="3"/><path d="M45 37c13-2 17 2 13 10l-3 5"/><rect x="43" y="51" width="17" height="8" rx="3"/></svg>';heading.prepend(icon);
     holder.append(heading);
     const all=[...snapshot.pressures].sort((a,b)=>b.dateTime.localeCompare(a.dateTime));
     const latest=all[0];
@@ -131,7 +131,7 @@
     if(goal===null){
       const times=current.map(i=>i.takenAtLocal?.slice(11,16)).filter(Boolean).sort();
       if(times.length)desc.append(element('span','ui01-today-time','Сегодня: '+times.join(', ')));
-      const btn=element('button','ui01-check'+(current.length?' is-taken':''),current.length?'✓':'＋');
+      const btn=element('button','ui01-check'+(current.length?' is-taken':''),current.length?'✓':'');
       btn.type='button';btn.setAttribute('aria-label',current.length?'Открыть журнал приёмов '+m.name:'Записать фактический приём '+m.name);
       btn.addEventListener('click',()=>current.length?navigate('meds'):onHomeIntake(m,btn));row.append(btn,desc);return row;
     }
@@ -183,10 +183,8 @@
       host.append(card);
     }
     if(!visible)host.append(element('p','ui01-empty','На сегодня лекарств нет. Добавьте препарат в разделе «Лекарства».'));
-    const summary=element('p','ui01-note',scheduled?`Запланированные отметки: ${completed} из ${scheduled} отмечено. Ситуативные лекарства в этот счётчик не входят.`:'Плановые отметки не заданы. Ситуативные лекарства в счётчик не входят.');
-    host.append(summary);
-    const note=element('p','ui01-note','Отсутствие галочки не означает пропуск лекарства. Слоты не выводятся из старых записей.');
-    host.append(note);
+    if(scheduled){host.append(element('p','ui01-note',`Отмечено по расписанию: ${completed} из ${scheduled}. Ситуативные приёмы отдельно.`));}
+    else if(visible){host.append(element('p','ui01-note','Расписание не задано. Пустая отметка не означает пропуск.'));}
   }
   function drawHome(){
     if(!el('ui01-pressure'))return;
@@ -201,9 +199,28 @@
     originalOverview();
     drawHome();
   };
+  function setupPressurePeriods(){
+    document.querySelectorAll('[data-period-target]').forEach(group=>{
+      const target=el(group.dataset.periodTarget);
+      if(!target)return;
+      if(target.id==='pressure-list-period')target.value='all';
+      const buttons=[...group.querySelectorAll('button[data-period]')];
+      const sync=()=>buttons.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.period===target.value)));
+      buttons.forEach(b=>b.addEventListener('click',()=>{
+        if(target.value!==b.dataset.period){
+          target.value=b.dataset.period;
+          target.dispatchEvent(new Event('change',{bubbles:true}));
+        }
+        sync();
+      }));
+      target.addEventListener('change',sync);
+      sync();
+    });
+  }
   document.addEventListener('DOMContentLoaded',()=>{
     readFont();
     applyDisplaySettings();
+    setupPressurePeriods();
     el('display-theme').addEventListener('change',e=>{try{localStorage.setItem(THEME_KEY,e.target.value)}catch(_){}applyDisplaySettings();});
     el('compact-view').addEventListener('change',e=>{try{localStorage.setItem(COMPACT_KEY,String(e.target.checked))}catch(_){}applyDisplaySettings();});
     el('ui01-font-less').addEventListener('click',()=>adjustFont(-1));
