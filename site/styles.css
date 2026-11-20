@@ -259,3 +259,71 @@ body #page-pressure .v23-segmented button[aria-pressed="true"]{background:#fff;c
 html[data-appearance="dark"] .v23-segmented{background:#263548}
 html[data-appearance="dark"] body #page-pressure .v23-segmented button[aria-pressed="true"]{background:#374c68;color:#e8f3ff}
 @media(prefers-color-scheme:dark){html:not([data-appearance]) .v23-segmented{background:#263548}html:not([data-appearance]) body #page-pressure .v23-segmented button[aria-pressed="true"]{background:#374c68;color:#e8f3ff}}
+
+/* iPhone UX v2.3.2 / Design Pass 02 / presentation only */
+.v232-build-label{margin:8px 0;color:#2f6cc0;font-size:12px;font-weight:750}
+.v232-pressure-highlights{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}
+.v232-pressure-stat{margin:0!important;padding:17px!important;border-radius:20px!important}
+.v232-pressure-stat-title{font-size:15px;margin:0 0 9px;color:#516780;font-weight:750}
+.v232-pressure-stat-number{font-variant-numeric:tabular-nums;font-size:clamp(25px,5vw,36px);line-height:1.15;letter-spacing:-.03em;color:#1b3555}
+.v232-pressure-stat-meta{font-size:12px;line-height:1.5;color:#60758d;margin:9px 0 0}
+.v232-pressure-latest{border-color:#bcd8f7}
+.v232-pressure-average{border-color:#cfe9dd}
+.v232-pressure-detail{width:100%;min-width:0}
+.v232-pressure-trigger{display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;padding:6px 0;cursor:pointer;min-height:44px}
+.v232-pressure-trigger::-webkit-details-marker{display:none}
+.v232-pressure-trigger .row-number{font-variant-numeric:tabular-nums}
+.v232-chevron{display:grid;place-items:center;min-width:24px;color:#6682a5;font-size:23px}
+.v232-pressure-detail[open] .v232-chevron{transform:rotate(180deg)}
+.v232-pressure-expanded{margin:8px 0 0;padding:12px 14px;background:#f4f8fc;border-radius:13px;display:grid;gap:6px}
+.v232-pressure-expanded .row-subtitle{margin:0;line-height:1.5}
+.v232-pressure-expanded .tiny-button{justify-self:end;min-height:44px}
+.v232-load-more{display:block;width:100%;margin:12px 0 0;min-height:46px;font-size:14px}
+.v232-add-med-panel{padding:0!important;overflow:hidden}
+.v232-add-med summary{list-style:none;cursor:pointer;min-height:58px;display:flex;align-items:center;padding:14px 20px;font-weight:750;color:#286bc0;user-select:none}
+.v232-add-med summary::-webkit-details-marker{display:none}
+.v232-add-med summary::after{content:'+';font-size:24px;margin-left:auto}
+.v232-add-med[open] summary::after{content:'−'}
+.v232-add-med form{padding:0 20px 20px}
+.v232-med-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:16px;background:#edf2f8;margin:0 0 14px}
+body #page-meds .v232-med-tab{border:0;border-radius:12px;min-height:48px;padding:10px 8px;font-size:14px;line-height:1.2;font-weight:720;color:#526881;background:transparent}
+body #page-meds .v232-med-tab[aria-selected="true"]{background:#fff;color:#286cce;box-shadow:0 2px 6px #20375619}
+.v232-med-pane[hidden]{display:none!important}
+.v232-med-kind-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:4px 0 15px}
+body #page-meds .v232-kind-button{border:1px solid #d5e0ee;background:#fff;color:#49627f;border-radius:12px;min-height:46px;padding:8px 4px;font-size:12px;font-weight:720;line-height:1.2;white-space:normal}
+body #page-meds .v232-kind-button[aria-pressed="true"]{background:#e8f1ff;border-color:#94bcef;color:#225da6}
+.v232-med-pane .v05-intake-head{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.v232-med-pane .intake-record,.v232-med-pane .course-history-card{border:1px solid #e0e9f4;border-radius:16px;padding:12px;margin:9px 0;background:#fff}
+.v232-prn-reason-label{display:grid;gap:5px;font-weight:650;font-size:12px}
+.v232-prn-reason-input{width:100%;min-width:0;min-height:44px}
+@media(max-width:740px){
+ .v232-pressure-highlights{grid-template-columns:1fr;gap:9px}
+ .v232-pressure-stat{padding:15px!important}
+ .v232-pressure-stat-number{font-size:30px}
+ #page-meds .v232-add-med-panel{margin-bottom:12px}
+ #page-meds .med-block{padding:11px 0}
+ #page-meds .med-row{gap:9px}
+ #page-meds .med-details{min-width:0}
+ #page-meds .med-schedule-slot{min-height:44px}
+ #page-settings .panel{border-radius:18px}
+}
+@media(max-width:355px){
+ .v232-med-kind-tabs{gap:4px}
+ body #page-meds .v232-kind-button{font-size:11px;padding:7px 2px}
+ .v232-pressure-stat-number{font-size:27px}
+}
+html[data-appearance="dark"] .v232-med-tabs{background:#263548}
+html[data-appearance="dark"] #page-meds .v232-med-tab[aria-selected="true"],
+html[data-appearance="dark"] #page-meds .v232-kind-button{background:#283c56;color:#e8f3ff}
+html[data-appearance="dark"] #page-meds .v232-kind-button[aria-pressed="true"]{background:#244a76}
+html[data-appearance="dark"] .v232-pressure-expanded{background:#263548}
+html[data-appearance="dark"] .v232-pressure-stat-number{color:#e8f3ff}
+html[data-appearance="dark"] .v232-med-pane .intake-record{background:#1b2634;border-color:#324155}
+@media(prefers-color-scheme:dark){
+ html:not([data-appearance]) .v232-med-tabs{background:#263548}
+ html:not([data-appearance]) #page-meds .v232-med-tab[aria-selected="true"],
+ html:not([data-appearance]) #page-meds .v232-kind-button{background:#283c56;color:#e8f3ff}
+ html:not([data-appearance]) .v232-pressure-expanded{background:#263548}
+ html:not([data-appearance]) .v232-pressure-stat-number{color:#e8f3ff}
+ html:not([data-appearance]) .v232-med-pane .intake-record{background:#1b2634;border-color:#324155}
+}
