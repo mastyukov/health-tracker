@@ -8,19 +8,16 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 concurrency:
   group: pae04-personal-pages
   cancel-in-progress: false
 jobs:
-  deploy:
-    if: github.repository == 'mastyukov/health-tracker' && github.ref == 'refs/heads/main'
+  package:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,5 +31,14 @@ jobs:
       - uses: actions/upload-pages-artifact@v4
         with:
           path: ./site
+  deploy:
+    needs: package
+    if: github.repository == 'mastyukov/health-tracker' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
