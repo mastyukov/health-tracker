@@ -1,8 +1,9 @@
 'use strict';
 /* PAE-04 CP-OFFLINE01: immutable app shell. Never accesses IndexedDB. */
 const CACHE_PREFIX='pae04-ht-stable-candidate-synthetic-schema1-cache-';
-const CACHE=CACHE_PREFIX+'personal-v233-privacy01-20261121';
+const CACHE=CACHE_PREFIX+'personal-v233-privacy03-20261121';
 const SHELL=new URL('./index.html',self.registration.scope).href;
+const RETIRED_PROFILE_URL=new URL('./personal_profile.json',self.registration.scope).href;
 const FILES=[
   './','./index.html','./app.js','./styles.css','./home.js','./home.css',
   './med_guard.mjs','./med_matcher.mjs','./med_guard.css',
@@ -27,14 +28,28 @@ self.addEventListener('install',event=>{
 });
 
 self.addEventListener('activate',event=>{
-  // Preserve previous version caches for tabs still controlled by an older SW.
-  // Prior cache versions may include retired profile assets; privacy cache
-  // remediation needs separate approval. This never touches IndexedDB.
+  // PRIVACY-03A: remove only prior Health Tracker static caches with the
+  // retired profile's exact request URL. Inspect request keys, never bodies.
+  // Never touch IndexedDB, other origin caches, or the current app shell.
   event.waitUntil((async()=>{
-    const keys=await caches.keys();
-    // Keep two preceding static caches for older Safari tabs; never delete data stores.
-    const prior=keys.filter(key=>key.startsWith(CACHE_PREFIX)&&key!==CACHE);
-    for(const key of prior.slice(0,Math.max(0,prior.length-2)))await caches.delete(key);
+    const names=await caches.keys();
+    if(!names.includes(CACHE))throw new Error('PRIVACY03_CURRENT_CACHE_MISSING');
+    const current=await caches.open(CACHE);
+    for(const path of ['./','./index.html','./app.js','./home.js',
+                       './med_guard.mjs','./offline_status.js']){
+      if(!(await current.match(new URL(path,self.registration.scope).href)))
+        throw new Error('PRIVACY03_CURRENT_CACHE_INCOMPLETE');
+    }
+    const prior=names.filter(name=>name.startsWith(CACHE_PREFIX)&&name!==CACHE);
+    const retired=[];
+    for(const name of prior){
+      const oldCache=await caches.open(name);
+      const requests=await oldCache.keys();
+      if(requests.some(request=>request.url===RETIRED_PROFILE_URL))retired.push(name);
+    }
+    for(const name of retired){
+      if(!(await caches.delete(name)))throw new Error('PRIVACY03_RETIRE_CACHE_FAILED');
+    }
     await self.clients.claim();
   })());
 });

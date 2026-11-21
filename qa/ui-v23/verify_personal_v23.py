@@ -21,11 +21,11 @@ PINNED={
   "med_guard.css": "1ebdff67c6ae4088759bc1c9059ee7f2f5fd6b2e",
   "med_guard.mjs": "9435ec752a887f0e6e5b696be6eaefc7d6999704",
   "med_matcher.mjs": "cf08822f5e71c8fb505fbec066e5eec9145215c6",
-  "offline_status.js": "b3c79d9887d5c7da69691fcc9de0ec4132b6d3d3",
+  "offline_status.js": "840d26969074fae651a04ae7df5fc0bc3aee595e",
   "personal_adapter.js": "a65e83b165dd1d17315b2a9bdae288c40424b52e",
   "robots.txt": "1f53798bb4fe33c86020be7f10c44f29486fd190",
   "styles.css": "33fc30b7c85f7cdbf60f43a206fb1f47a9c72fb4",
-  "sw.js": "344f8c28882edf17e4889c478d1ead997853d3b4"
+  "sw.js": "d9ba5a616202686a94fd54cdc27f36aa64f0baa9"
 }
 assert site.is_dir(),'SITE_MISSING'
 assert not any(f.is_symlink() for f in site.rglob('*')),'SYMLINK_IN_SITE'
@@ -53,8 +53,14 @@ assert "const BACKUP_FORMAT='pae04.healthtracker.synthetic-backup'" in app,'BACK
 assert 'navigator.onLine' not in app and 'Локальная база доступна' in app,'LOCAL_DB_BADGE_REGRESSION'
 assert 'TEST: импорт резервных копий отключён' not in app,'IMPORT_TEST_DISABLE'
 assert 'indexedDB.deleteDatabase' not in app,'UNAPPROVED_DB_DELETE'
-assert 'personal-v233-privacy01-20261121' in sw and 'personal-v233-privacy01-20261121' in offline,'CACHE_VERSION_MISMATCH'
-assert "'./personal_adapter.js'" not in sw and "'./personal_profile.json'" not in sw,'PERSONAL_ASSETS_STILL_PRECACHED'
+assert 'personal-v233-privacy03-20261121' in sw and 'personal-v233-privacy03-20261121' in offline,'CACHE_VERSION_MISMATCH'
+sw_shell=sw.split('const FILES=[',1)[1].split('];',1)[0]
+assert "'./personal_adapter.js'" not in sw_shell and "'./personal_profile.json'" not in sw_shell,'PERSONAL_ASSETS_STILL_PRECACHED'
+assert "RETIRED_PROFILE_URL=new URL('./personal_profile.json',self.registration.scope).href" in sw,'RETIRED_PROFILE_KEY_NOT_PINNED'
+assert "name.startsWith(CACHE_PREFIX)&&name!==CACHE" in sw,'CACHE_PREFIX_SCOPE_CHANGED'
+assert "oldCache.keys()" in sw and "request.url===RETIRED_PROFILE_URL" in sw,'RETIRE_KEY_ONLY_GATE_MISSING'
+assert "PRIVACY03_RETIRE_CACHE_FAILED" in sw and "caches.delete(name)" in sw,'RETIRE_DELETE_GATE_MISSING'
+assert "PRIVACY03_CURRENT_CACHE_INCOMPLETE" in sw,'CURRENT_SHELL_READINESS_GATE_MISSING'
 assert "'./personal_adapter.js'" not in offline and "'./personal_profile.json'" not in offline,'PERSONAL_ASSETS_OFFLINE_REQUIRED'
 adapter=(site/'personal_adapter.js').read_text(encoding='utf8')
 assert 'fetch(' not in adapter and 'personal_profile.json' not in adapter,'LEGACY_PROFILE_FETCH_PRESENT'
@@ -65,4 +71,4 @@ assert 'id="v232-build-version"' in html,'VISIBLE_VERSION_MISSING'
 assert 'setupMedicationSections();' in (site/'home.js').read_text(encoding='utf8'),'MEDICATION_TABS_MISSING'
 assert 'v232PressureVisible+=30' in app,'PRESSURE_PAGINATION_MISSING'
 assert 'prnReason.maxLength=160' in app,'PRN_REASON_MISSING'
-print('PASS_STATIC_ONLY: EXACT 21/21 GIT BLOBS, v2.3.3 PRIVACY-01; SAFARI RUNTIME NOT VERIFIED')
+print('PASS_STATIC_ONLY: EXACT 21/21 GIT BLOBS, v2.3.3 PRIVACY-03A; SAFARI RUNTIME NOT VERIFIED')
