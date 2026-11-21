@@ -426,7 +426,14 @@ function renderPressureSummary(){
  const latest=all[0],todayRows=all.filter(p=>p.dateTime.slice(0,10)===today());
  const card=(title,value,meta,cls)=>{
   const panel=node('article','panel v232-pressure-stat '+(cls||''));
-  panel.append(node('h3','v232-pressure-stat-title',title),
+  const heading=node('h3','v232-pressure-stat-title',title);
+  if(title==='Последний замер'){
+   const icon=node('span','ui01-tonometer-icon');
+   icon.setAttribute('aria-hidden','true');
+   icon.innerHTML='<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="11" y="5" width="34" height="46" rx="7"/><rect x="17" y="12" width="22" height="17" rx="2"/><path d="M20 22h4l3-5 4 9 3-4h3"/><circle cx="28" cy="40" r="3"/><path d="M45 37c13-2 17 2 13 10l-3 5"/><rect x="43" y="51" width="17" height="8" rx="3"/></svg>';
+   heading.prepend(icon);
+  }
+  panel.append(heading,
     node('strong','v232-pressure-stat-number',value),
     node('p','v232-pressure-stat-meta',meta));host.append(panel);
  };
@@ -660,6 +667,13 @@ function renderMedications(){
 }
 
 function renderMedicationHistory(){
+  const historyKindIcon=kind=>{
+    const glyph={regular:'∞',course:'▦',asNeeded:'ϟ'}[kind];
+    if(!glyph)return null;
+    const icon=node('span',`ui01-kind-icon kind-${kind}`,glyph);
+    icon.setAttribute('aria-hidden','true');
+    return icon;
+  };
   const host=$('intake-list');if(!host)return;host.replaceChildren();
   const kind=$('med-history-kind')?.value||'regular';
   const periodControl=$('med-history-period');
@@ -704,6 +718,8 @@ function renderMedicationHistory(){
       for(const med of meds){
         const details=node('details','intake-record course-history-card');
         const header=node('summary','course-history-summary');
+        const glyph=historyKindIcon(med.kind);
+        if(glyph)header.append(glyph);
         header.append(node('strong','',med.name));
         header.append(node('div','row-subtitle',`Начало: ${formatDay(med.from)} · окончание: ${formatDay(med.to)}`));
         if(!uncertain&&withinYear(med))header.append(node('span','history-year-badge',`Курс календарного года · ${year}`));
@@ -747,6 +763,8 @@ function renderMedicationHistory(){
   for(const i of rows){
     const med=medsById.get(i.medId),item=node('article',`intake-record ${intakeStatus(i)==='cancelled'?'cancelled':''}`);
     const header=node('div','intake-record-head'),main=node('div');
+    const glyph=historyKindIcon(med.kind);
+    if(glyph)main.append(glyph);
     main.append(node('strong','',`${med.name} · ${intakeStatus(i)==='active'?'Приём подтверждён':'Отметка отменена'}`));
     const stamp=i.takenAtLocal?dateLabel(i.takenAtLocal):`${i.date} · время неизвестно`;
     main.append(node('div','row-subtitle',`${stamp} · ${KINDS[med.kind]}`));
