@@ -64,35 +64,79 @@
     try{localStorage.setItem(FONT_KEY,String(scaleIndex));}catch(_){}
     applyFont();
   }
+  // HOME-V7: presentation-only projection over existing right-arm manual records.
+  function v7PressureView(pressures,day){
+    const rows=[...pressures].filter(p=>p&&typeof p.dateTime==='string'&&
+      Number.isFinite(p.systolic)&&Number.isFinite(p.diastolic))
+      .sort((a,b)=>a.dateTime.localeCompare(b.dateTime));
+    const todayRows=rows.filter(p=>p.dateTime.slice(0,10)===day);
+    const previous=priorDate(day),yesterday=rows.filter(p=>p.dateTime.slice(0,10)===previous);
+    const mean=(records,key)=>{
+      const values=records.map(p=>p[key]).filter(Number.isFinite);
+      return values.length?Math.round(values.reduce((a,b)=>a+b,0)/values.length):null;
+    };
+    if(todayRows.length){
+      return {source:'today',latest:todayRows[todayRows.length-1],
+        label:'Сегодня · '+todayRows[todayRows.length-1].dateTime.slice(11,16),
+        average:todayRows.length>=2?{systolic:mean(todayRows,'systolic'),
+          diastolic:mean(todayRows,'diastolic'),pulse:mean(todayRows,'pulse'),
+          count:todayRows.length}:null};
+    }
+    if(yesterday.length){
+      return {source:'yesterday',latest:{systolic:mean(yesterday,'systolic'),
+        diastolic:mean(yesterday,'diastolic'),pulse:mean(yesterday,'pulse')},
+        label:yesterday.length===1?'Вчера · один замер':
+          'Вчера · среднее за '+yesterday.length+' замера',
+        average:null};
+    }
+    const last=rows[rows.length-1];
+    return {source:last?'older':'empty',latest:last||null,
+      label:last?'Последний замер · '+humanDate(last.dateTime.slice(0,10))+' · '+last.dateTime.slice(11,16):
+        'Измерений пока нет',average:null};
+  }
   function drawPressure(day){
     const holder=el('ui01-pressure');if(!holder)return;
     holder.replaceChildren();
-    const heading=element('h2','ui01-card-title','Последний замер');
-    const icon=element('span','ui01-tonometer-icon');icon.innerHTML='<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="11" y="5" width="34" height="46" rx="7"/><rect x="17" y="12" width="22" height="17" rx="2"/><path d="M20 22h4l3-5 4 9 3-4h3"/><circle cx="28" cy="40" r="3"/><path d="M45 37c13-2 17 2 13 10l-3 5"/><rect x="43" y="51" width="17" height="8" rx="3"/></svg>';heading.prepend(icon);
-    holder.append(heading);
-    const all=[...snapshot.pressures].sort((a,b)=>b.dateTime.localeCompare(a.dateTime));
-    const latest=all[0];
-    const todayRows=all.filter(p=>p.dateTime.slice(0,10)===day);
-    if(!latest){
-      holder.append(element('p','ui01-empty','Измерений пока нет'));
+    const title=element('h2','ui01-card-title ui01-v7-pressure-title','Давление');
+    const heart=element('span','ui01-v7-heart','♥');
+    heart.setAttribute('aria-hidden','true');
+    const icon=element('span','ui01-tonometer-icon');
+    icon.innerHTML='<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="11" y="5" width="34" height="46" rx="7"/><rect x="17" y="12" width="22" height="17" rx="2"/><path d="M20 22h4l3-5 4 9 3-4h3"/><circle cx="28" cy="40" r="3"/><path d="M45 37c13-2 17 2 13 10l-3 5"/><rect x="43" y="51" width="17" height="8" rx="3"/></svg>';
+    title.prepend(heart,icon);holder.append(title);
+    // Retire separate average card: v7 shows the mean beside today's last reading.
+    const oldMean=el('ui01-pressure-average');
+    if(oldMean){oldMean.replaceChildren();oldMean.hidden=true;}
+    const view=v7PressureView(snapshot.pressures,day);
+    if(view.latest){
+      const grid=element('div','ui01-v7-pressure-grid');
+      const left=element('div','ui01-v7-pressure-main');
+      left.append(element('strong','ui01-v7-bp-primary',
+        view.latest.systolic+' / '+view.latest.diastolic));
+      left.append(element('span','ui01-v7-reading-meta',view.label));
+      if(Number.isFinite(view.latest.pulse)){
+        const pulse=element('span','ui01-v7-pulse','♥ 〰 Пульс '+view.latest.pulse);
+        pulse.setAttribute('aria-label','Пульс '+view.latest.pulse+' ударов в минуту');
+        left.append(pulse);
+      }else left.append(element('span','ui01-v7-reading-meta','Пульс не указан'));
+      grid.append(left);
+      if(view.average){
+        const avg=element('div','ui01-v7-average');
+        avg.append(element('span','ui01-v7-average-label',
+          'Среднее сегодня · '+view.average.count+' замера'));
+        avg.append(element('strong','ui01-v7-bp-average',
+          view.average.systolic+' / '+view.average.diastolic));
+        if(view.average.pulse!==null){
+          avg.append(element('span','ui01-v7-reading-meta',
+            'Пульс '+view.average.pulse+' · средний'));
+        }
+        grid.append(avg);
+      }
+      holder.append(grid);
     }else{
-      const row=element('div','ui01-reading');
-      row.append(element('strong','ui01-bp',String(latest.systolic)+' / '+String(latest.diastolic)),
-        element('span','ui01-reading-meta',humanDate(latest.dateTime.slice(0,10))+' · '+latest.dateTime.slice(11,16)+' · '+(latest.pulse==null?'Пульс не указан':'Пульс '+latest.pulse)));
-      holder.append(row);
-    }
-    const average=el('ui01-pressure-average');if(average){average.replaceChildren();average.hidden=todayRows.length<2;}
-    if(todayRows.length>=2&&average){
-      const mean=key=>Math.round(todayRows.reduce((a,p)=>a+p[key],0)/todayRows.length);
-      const pulses=todayRows.filter(p=>Number.isFinite(p.pulse));
-      average.append(element('h2','ui01-card-title','Среднее сегодня'));
-      average.append(element('span','ui01-muted',`${todayRows.length} ${todayRows.length===1?'измерение':'измерения'}`));
-      average.append(element('strong','ui01-yesterday-bp',`${mean('systolic')} / ${mean('diastolic')} мм рт. ст.`));
-      if(pulses.length>=2)average.append(element('span','ui01-muted','Пульс в среднем: '+Math.round(pulses.reduce((a,p)=>a+p.pulse,0)/pulses.length)));
+      holder.append(element('p','ui01-empty','Измерений пока нет.'));
     }
     const add=element('button','primary ui01-wide-button','＋ Добавить измерение');
-    add.type='button';
-    add.addEventListener('click',()=>navigate('pressure'));
+    add.type='button';add.addEventListener('click',()=>navigate('pressure'));
     holder.append(add);
   }
   function courseActive(m,day) {
@@ -125,7 +169,13 @@
     const current=snapshot.intakes.filter(i=>i.medId===m.id&&i.date===day&&activeIntake(i));
     const goal=m.kind==='asNeeded'?null:medDailyTarget(m);
     const desc=element('div','ui01-med-description');
-    desc.append(element('strong','ui01-med-name',m.name));
+    const medName=element('strong','ui01-med-name',m.name);
+    desc.append(medName);
+    if(goal!==null){
+      const doneCount=medDailySlots(m,current).filter(Boolean).length;
+      if(doneCount)medName.append(element('span','ui01-v7-done-badge',
+        ' ✓ '+doneCount+'/'+goal));
+    }
     if(m.dose)desc.append(element('span','ui01-personal-dose',m.dose));
     if(m.kind==='asNeeded')desc.append(element('span','ui01-muted','По необходимости'));
     if(goal===null){
@@ -158,33 +208,97 @@
     }
     const legacy=current.filter(i=>!Number.isInteger(i.dailySlot)).length;
     if(legacy)desc.append(element('span','ui01-muted',`${legacy} старых ${legacy===1?'отметка':'отметок'} без назначенного слота`));
+    const actualTimes=slots.filter(Boolean).map(i=>takenTime(i)).filter(Boolean);
+    if(actualTimes.length)desc.append(element('span','ui01-v7-actual-time',
+      'Фактическое время: '+actualTimes.join(', ')));
     row.append(desc,checks);
     return row;
   }
+  // No planned clock hours are stored: first pending is a deterministic slot order,
+  // never a forecast of the actual next dose time.
+  function v7Plan(day){
+    const groups={},kinds=['regular','course','asNeeded'];
+    let total=0,checked=0,unconfigured=0,first=null;
+    for(const kind of kinds){
+      const meds=snapshot.medications.filter(m=>m.kind===kind&&
+        (kind!=='course'||courseActive(m,day)))
+        .sort((a,b)=>a.name.localeCompare(b.name,'ru'));
+      groups[kind]=meds.map(med=>{
+        const current=snapshot.intakes.filter(i=>i.medId===med.id&&i.date===day&&activeIntake(i));
+        const goal=kind==='asNeeded'?null:medDailyTarget(med);
+        const slots=goal===null?[]:medDailySlots(med,current);
+        const done=slots.filter(Boolean).length;
+        if(kind!=='asNeeded'){
+          if(goal===null)unconfigured++;
+          else{
+            total+=goal;checked+=done;
+            for(let n=1;n<=goal;n++){
+              if(!slots[n-1]&&!first)first={med,slot:n,goal};
+            }
+          }
+        }
+        return {med,goal,done,fullyDone:goal!==null&&goal>0&&done===goal};
+      });
+    }
+    return {groups,total,checked,unconfigured,first};
+  }
   function drawMeds(day,yday){
     const host=el('ui01-meds');if(!host)return;host.replaceChildren();
-    host.append(element('h2','ui01-section-title','Лекарства сегодня'));
-    let visible=0,scheduled=0,completed=0;
+    const plan=v7Plan(day);
+    const next=element('section','ui01-card ui01-v7-next');
+    next.setAttribute('aria-label','Следующий неотмеченный слот');
+    next.append(element('h2','ui01-card-title','Следующий неотмеченный приём'));
+    if(plan.first){
+      next.append(element('strong','ui01-v7-next-name',plan.first.med.name));
+      next.append(element('p','ui01-v7-next-meta',
+        medSlotLabel(plan.first.goal,plan.first.slot)+' · плановое время не задано'));
+    }else if(plan.total>0&&plan.unconfigured===0){
+      next.append(element('p','ui01-v7-complete-message','✓ Все настроенные слоты отмечены'));
+    }else if(plan.total===0){
+      next.append(element('p','ui01-v7-next-meta','Настроенных слотов нет. Время приёма не задано.'));
+    }else{
+      next.append(element('p','ui01-v7-next-meta',
+        'Настроенные слоты отмечены; есть препараты без расписания.'));
+    }
+    next.append(element('p','ui01-v7-disclaimer',
+      'Порядок слотов — не медицинская рекомендация и не напоминание.'));
+    host.append(next,element('h2','ui01-section-title','Лекарства сегодня'));
+    let visible=0;
     for(const kind of ['regular','course','asNeeded']){
-      const list=snapshot.medications.filter(m=>m.kind===kind&&(kind!=='course'||courseActive(m,day)))
-        .sort((a,b)=>a.name.localeCompare(b.name,'ru'));
-      if(!list.length)continue;
-      visible++;
+      const rows=plan.groups[kind];if(!rows.length)continue;visible++;
       const card=element('section','ui01-card ui01-med-group');
-      const h=element('h3','ui01-group-title',TYPE_NAMES[kind]);
-      const kindGlyph={regular:'∞',course:'▦',asNeeded:'ϟ'}[kind];
-      h.prepend(element('span',`ui01-kind-icon kind-${kind}`,kindGlyph));
-      card.append(h);
-      for(const med of list){
-        const actual=snapshot.intakes.filter(i=>i.medId===med.id&&i.date===day&&activeIntake(i));
-        const goal=med.kind==='asNeeded'?null:medDailyTarget(med);if(goal!==null){scheduled+=goal;completed+=medDailySlots(med,actual).filter(Boolean).length;}
-        card.append(medRow(med,day));
+      const heading=element('h3','ui01-group-title',TYPE_NAMES[kind]);
+      const glyph={regular:'∞',course:'▦',asNeeded:'ϟ'}[kind];
+      heading.prepend(element('span','ui01-kind-icon kind-'+kind,glyph));
+      card.append(heading);
+      const pending=rows.filter(r=>!r.fullyDone),finished=rows.filter(r=>r.fullyDone);
+      for(const row of pending)card.append(medRow(row.med,day));
+      if(finished.length){
+        // Native details keeps audited Undo controls available, but collapsed by default.
+        const details=element('details','ui01-v7-finished');
+        const text=finished.length===rows.length?
+          '✓ Все настроенные приёмы отмечены · Показать / отменить':
+          '✓ Принято: '+finished.length+' · Показать / отменить';
+        details.append(element('summary','ui01-v7-finished-summary',text));
+        for(const row of finished)details.append(medRow(row.med,day));
+        card.append(details);
+      }
+      if(kind==='asNeeded'){
+        card.append(element('p','ui01-v7-disclaimer',
+          'Ситуативные препараты не считаются пропущенными.'));
       }
       host.append(card);
     }
-    if(!visible)host.append(element('p','ui01-empty','На сегодня лекарств нет. Добавьте препарат в разделе «Лекарства».'));
-    if(scheduled){host.append(element('p','ui01-note',`Отмечено по расписанию: ${completed} из ${scheduled}. Ситуативные приёмы отдельно.`));}
-    else if(visible){host.append(element('p','ui01-note','Расписание не задано. Пустая отметка не означает пропуск.'));}
+    if(!visible)host.append(element('p','ui01-empty',
+      'На сегодня нет постоянных и активных курсовых препаратов. Ситуативные отдельно.'));
+    if(plan.total){
+      host.append(element('p','ui01-note',
+        'Отмечено по настроенным слотам: '+plan.checked+' из '+plan.total+
+        (plan.unconfigured?' · Без расписания: '+plan.unconfigured:'')+'.'));
+    }else if(plan.unconfigured){
+      host.append(element('p','ui01-note',
+        'У '+plan.unconfigured+' препаратов число приёмов не задано: отсутствие отметки не считается пропуском.'));
+    }
   }
   function drawHome(){
     if(!el('ui01-pressure'))return;
