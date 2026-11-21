@@ -43,7 +43,7 @@ function exactFields(obj, allowed) {
 }
 function validInstant(s) {
   return typeof s === 'string' &&
-    /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(s) &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(s) &&
     Number.isFinite(Date.parse(s)) && new Date(s).toISOString() === s;
 }
 async function loadAndSanitize() {
@@ -106,7 +106,7 @@ function makeMessage(report) {
       ? 'SCOPED_CHECKS_REPORTED' : 'NOT_VERIFIED'));
   lines.push('IPHONE_SAFARI=NOT_RUN');
   lines.push('SANITIZED_ONLY=true');
-  return { digest, handoff, body: lines.join('\\n') };
+  return { digest, handoff, body: lines.join('\n') };
 }
 function headers(token) {
   return {
@@ -144,10 +144,10 @@ async function readAllComments(token) {
 function duplicateState(comments, handoff, digest) {
   const marker = 'HANDOFF_ID=' + handoff;
   const sha = 'REPORT_SHA256=' + digest;
-  const matches = comments.filter(c => c.split('\\n').includes(marker));
+  const matches = comments.filter(c => c.split('\n').includes(marker));
   if (matches.length > 1) stop('DUPLICATE_EXISTING_COMMENTS');
   if (matches.length === 1) {
-    if (!matches[0].split('\\n').includes(sha)) stop('HANDOFF_DIGEST_CONFLICT');
+    if (!matches[0].split('\n').includes(sha)) stop('HANDOFF_DIGEST_CONFLICT');
     return 'ALREADY_POSTED';
   }
   return 'NEW';
