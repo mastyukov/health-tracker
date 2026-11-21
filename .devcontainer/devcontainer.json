@@ -1,0 +1,20 @@
+{
+  "name": "PAE-04 Health Tracker — isolated QA HUB",
+  "image": "mcr.microsoft.com/playwright:v1.65.1-noble",
+  "forwardPorts": [
+    8765
+  ],
+  "portsAttributes": {
+    "8765": {
+      "label": "PAE-04 synthetic preview — KEEP PRIVATE",
+      "onAutoForward": "notify"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "pae-qa-hub-codespaces-pilot",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "prepare": "node qa-hub.mjs prepare",
+    "serve": "node qa-hub.mjs serve",
+    "qa": "node qa-hub.mjs test"
+  },
+  "dependencies": {
+    "playwright": "1.65.1"
+  }
+}
