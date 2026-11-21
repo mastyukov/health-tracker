@@ -1,0 +1,329 @@
+name: PAE-04 SAFARI-UPGRADE-01 synthetic one-shot (PRIVACY-03A)
+on:
+  push:
+    branches:
+      - pilot/pae04-privacy01-v233-20261121
+    paths:
+      - .github/workflows/pae04-safari-upgrade01-once.yml
+permissions:
+  contents: read
+concurrency:
+  group: pae04-safari-upgrade01-once
+  cancel-in-progress: false
+jobs:
+  safari_upgrade_once:
+    if: >-
+      github.repository == 'mastyukov/health-tracker' &&
+      github.event_name == 'push' &&
+      github.event.before == '43115b5add9a9bc8b8bc7669a845d8063b7f851d' &&
+      github.run_attempt == 1
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Single SafariDriver upgrade, synthetic only, STOP_FIRST
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = 'mastyukov/health-tracker'
+          test "$GITHUB_REF" = 'refs/heads/pilot/pae04-privacy01-v233-20261121'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test ! -e site/personal_profile.json
+          python3 - <<'PAE04_SAFARI_UPGRADE01_PY'
+          from __future__ import annotations
+          import hashlib, http.server, json, os, pathlib, shutil, socket, subprocess, sys
+          import tempfile, threading, time, urllib.request, urllib.error
+          
+          class StopFirst(Exception):
+              pass
+          def check(ok, code):
+              if not ok:
+                  raise StopFirst(code)
+          def blob_sha(data):
+              return hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
+          
+          SOURCE = "e279bbe524091d200295db8b69ef6fc87faa9e27"
+          PINS = {"app.js":"49aa6bfd9e72852062263d0903fc8d78fe247bdc","home.css":"f38d59e4ef42fa44e64dd471d677881fccb5d040","home.js":"e579cc0db5c8e360b3a57870d0e3bc36a087f1c7","index.html":"c7f0884858c5cce2783245c9c21904e05d478a53","manifest.webmanifest":"e74f10f038d5a4e1c04936c1246435de58282d35","med_guard.css":"1ebdff67c6ae4088759bc1c9059ee7f2f5fd6b2e","med_guard.mjs":"9435ec752a887f0e6e5b696be6eaefc7d6999704","med_matcher.mjs":"cf08822f5e71c8fb505fbec066e5eec9145215c6","offline_status.js":"2fcd5a98ad8a4eb424af5d7f6aa6a5736f7d4193","personal_adapter.js":"277b8bc2435d4bd9f4b30c89db15570ca2f2656f","styles.css":"33fc30b7c85f7cdbf60f43a206fb1f47a9c72fb4","sw.js":"e147915ff6125dca876d1d6a6b9cbc956475fe35","icons/apple-touch-icon.png":"4cf9879b433979d1508c8ffdbb312e29123ef549","icons/icon-192.png":"c07d28a59f0d773c2e18af62b261b50389f60a94","icons/icon-512.png":"09673205f1b64d689d8899c1096031ba351f34cc","icons/icon.svg":"05b76763ede5f0d88e2b855f3d90ed72ddf64842"}
+          EXPECTED_NEW_CACHE = "pae04-ht-stable-candidate-synthetic-schema1-cache-personal-v233-privacy03-20261121"
+          EXPECTED_OLD_CACHE = "pae04-ht-stable-candidate-synthetic-schema1-cache-personal-v232-design02-20261121"
+          DB = "PAE04_HT_STABLE_CANDIDATE_INTEGRATION_SYNTHETIC_SCHEMA1"
+          ROOT = pathlib.Path(os.environ.get("RUNNER_TEMP", tempfile.gettempdir())) / "pae04-safari-upgrade01-once"
+          OLD = ROOT / "old"
+          NEW = ROOT / "new"
+          PROFILE_PATH = "personal_profile.json"
+          phase = "ENVIRONMENT"
+          driver = None
+          proc = None
+          server = None
+          def prepare():
+              global phase
+              phase = "SOURCE_PINNED"
+              check(os.environ.get("GITHUB_REPOSITORY")=="mastyukov/health-tracker", "WRONG_REPO")
+              check(os.environ.get("GITHUB_REF")=="refs/heads/pilot/pae04-privacy01-v233-20261121", "WRONG_BRANCH")
+              check(os.environ.get("GITHUB_EVENT_NAME")=="push", "WRONG_EVENT")
+              event = json.loads(pathlib.Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+              check(event.get("before")=="43115b5add9a9bc8b8bc7669a845d8063b7f851d", "WRONG_PARENT")
+              check(len(PINS)==16 and PROFILE_PATH not in PINS and all(".." not in p and not p.startswith("/") for p in PINS), "PIN_ALLOWLIST")
+              ROOT.mkdir(mode=0o700,parents=True,exist_ok=False)
+              OLD.mkdir(); NEW.mkdir()
+              for rel, expected in PINS.items():
+                  url = "https://raw.githubusercontent.com/mastyukov/health-tracker/" + SOURCE + "/site/" + rel
+                  response = urllib.request.urlopen(urllib.request.Request(url,headers={"User-Agent":"PAE04-SYNTHETIC-UPGRADE-ONCE"}),timeout=16)
+                  data = response.read(200001)
+                  check(len(data)<=200000 and blob_sha(data)==expected,"SOURCE_SHA_MISMATCH")
+                  target = OLD / rel
+                  target.parent.mkdir(parents=True,exist_ok=True)
+                  target.write_bytes(data)
+              fixture = {
+                "schema":"PAE04_PERSONAL_QA_PROFILE_V1",
+                "purpose":"PERSONAL_TEST_ONLY",
+                "description":"SYNTHETIC ONLY; NOT REAL PATIENT DATA",
+                "constraints":{"seed_intakes":False,"seed_pressures":False},
+                "medicines":[{"key":"qa-med-"+str(i+1).zfill(2),
+                     "name":"QA-FICTION-"+str(i+1).zfill(2),
+                     "dose":"1 synthetic unit","kind":["regular","course","asNeeded"][i%3],
+                     "category":"medicine","product_strength_mg":None,
+                     "form":"таблетки","from":None,"to":None} for i in range(10)]
+              }
+              (OLD / PROFILE_PATH).write_text(json.dumps(fixture,ensure_ascii=False),encoding="utf-8")
+              check(len(list(OLD.rglob("*")))-len([p for p in OLD.rglob("*") if p.is_dir()])==17,"OLD_FILE_COUNT")
+              phase = "CANDIDATE_PINNED"
+              local = pathlib.Path("site").resolve()
+              check(local.is_dir() and not (local / PROFILE_PATH).exists(),"NEW_PROFILE_PRESENT")
+              check(not any(p.is_symlink() for p in local.rglob("*")),"SYMLINK_IN_SITE")
+              completed = subprocess.run([sys.executable,"qa/ui-v23/verify_personal_v23.py",str(local)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=20)
+              check(completed.returncode==0,"CANDIDATE_STATIC_SHA_GATE_FAILED")
+              shutil.copytree(local,NEW,dirs_exist_ok=True)
+              check(not (NEW / PROFILE_PATH).exists(),"COPY_PROFILE_PRESENT")
+              check(EXPECTED_NEW_CACHE in (NEW/"offline_status.js").read_text(encoding="utf8"),"NEW_CACHE_ID")
+              check("personal_profile.json" not in (NEW/"site-never-exists").name, "UNEXPECTED_PATH")
+          
+          class AppServer(http.server.ThreadingHTTPServer):
+              daemon_threads=True
+          class Handler(http.server.BaseHTTPRequestHandler):
+              def log_message(self, fmt, *args):
+                  return
+              def do_GET(self):
+                  try:
+                      from urllib.parse import urlsplit,unquote
+                      item = unquote(urlsplit(self.path).path)
+                      rel = item.lstrip("/") or "index.html"
+                      check(".." not in rel and not rel.startswith("."),"UNSAFE_REQUEST")
+                      base = self.server.current
+                      p = (base / rel).resolve()
+                      check(p.is_relative_to(base.resolve()) and p.is_file(),"MISSING_RESOURCE")
+                      body = p.read_bytes()
+                      mime = {".html":"text/html",".js":"text/javascript",".mjs":"text/javascript",
+                              ".css":"text/css",".webmanifest":"application/manifest+json",
+                              ".json":"application/json",".svg":"image/svg+xml",".png":"image/png"}.get(p.suffix,"application/octet-stream")
+                      self.send_response(200)
+                      self.send_header("Content-Type", mime+"; charset=utf-8" if mime.startswith("text/") or mime=="application/json" else mime)
+                      self.send_header("Cache-Control","no-store")
+                      self.send_header("Content-Length",str(len(body)))
+                      self.end_headers(); self.wfile.write(body)
+                  except Exception:
+                      self.send_response(404);self.send_header("Content-Length","0");self.end_headers()
+              def do_POST(self):
+                  self.send_response(405);self.send_header("Content-Length","0");self.end_headers()
+          
+          def port():
+              s=socket.socket();s.bind(("127.0.0.1",0));n=s.getsockname()[1];s.close();return n
+          def request_driver(method,endpoint,data=None,timeout=35):
+              check(driver is not None,"DRIVER_NOT_READY")
+              body=None if data is None else json.dumps(data).encode()
+              q=urllib.request.Request("http://127.0.0.1:"+str(driver.port)+endpoint,data=body,method=method)
+              if body is not None:q.add_header("Content-Type","application/json")
+              try:
+                  with urllib.request.urlopen(q,timeout=timeout) as response:
+                      result=json.loads(response.read(250000).decode())
+              except urllib.error.HTTPError as ex:
+                  raise StopFirst("WEBDRIVER_HTTP_"+str(ex.code))
+              except Exception:
+                  raise StopFirst("WEBDRIVER_UNAVAILABLE")
+              value=result.get("value")
+              if isinstance(value,dict) and value.get("error"):
+                  raise StopFirst("WEBDRIVER_"+str(value["error"]).replace(" ","_")[:40])
+              return value
+          class Safari:
+              def __init__(self):
+                  self.port=port()
+                  check(pathlib.Path("/usr/bin/safaridriver").is_file(),"BLOCKED_ENGINE_MISSING")
+                  enabled=subprocess.run(["sudo","-n","/usr/bin/safaridriver","--enable"],
+                                         stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=20)
+                  check(enabled.returncode==0,"BLOCKED_DRIVER_ENABLE")
+                  self.proc=subprocess.Popen(["/usr/bin/safaridriver","-p",str(self.port)],
+                          stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+                  for _ in range(30):
+                      if self.proc.poll() is not None:
+                          raise StopFirst("BLOCKED_DRIVER_EXITED")
+                      try:
+                          urllib.request.urlopen("http://127.0.0.1:"+str(self.port)+"/status",timeout=1).close()
+                          break
+                      except Exception:
+                          time.sleep(.3)
+                  else:
+                      raise StopFirst("BLOCKED_DRIVER_START")
+                  v=request_driver("POST","/session",{"capabilities":{"alwaysMatch":{"browserName":"safari"}}},timeout=70)
+                  self.id=v.get("sessionId")
+                  check(isinstance(self.id,str) and bool(self.id),"BLOCKED_SESSION")
+                  request_driver("POST","/session/"+self.id+"/timeouts",
+                                 {"script":35000,"pageLoad":30000,"implicit":0})
+              def nav(self,url):
+                  return request_driver("POST","/session/"+self.id+"/url",{"url":url},timeout=40)
+              def async_js(self,js,timeout=43):
+                  wrapper = ("const done=arguments[arguments.length-1];"
+                             "(async()=>{" + js + "})().then(v=>done({ok:true,v}),"
+                             "e=>done({ok:false,e:e&&e.name||'Error'}));")
+                  result=request_driver("POST","/session/"+self.id+"/execute/async",
+                                        {"script":wrapper,"args":[]},timeout=timeout)
+                  check(isinstance(result,dict) and result.get("ok"),"SAFARI_JS_"+str(result.get("e","UNKNOWN") if isinstance(result,dict) else "UNKNOWN"))
+                  return result["v"]
+              def sync_js(self,js):
+                  return request_driver("POST","/session/"+self.id+"/execute/sync",
+                                        {"script":js,"args":[]},timeout=30)
+              def stop(self):
+                  if getattr(self,"id",None):
+                      try:request_driver("DELETE","/session/"+self.id,timeout=8)
+                      except Exception:pass
+                  if getattr(self,"proc",None):
+                      self.proc.terminate()
+                      try:self.proc.wait(timeout=5)
+                      except subprocess.TimeoutExpired:self.proc.kill()
+          
+          def run():
+              global driver,proc,server,phase
+              prepare()
+              phase="SAFARI_DRIVER"
+              server=AppServer(("127.0.0.1",0),Handler)
+              server.current=OLD
+              thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+              base="http://127.0.0.1:"+str(server.server_port)+"/"
+              driver=Safari()
+              phase="OLD_SHELL"
+              driver.nav(base)
+              check("v2.3.2" in driver.sync_js("return document.querySelector('meta[name=\"application-version\"]')?.content||'';"),"OLD_VERSION_MISSING")
+              driver.async_js("""
+                const reg=await navigator.serviceWorker.ready;
+                if(!reg.active)throw new Error('NoSW');
+                return true;
+              """)
+              driver.nav(base)
+              old=driver.async_js("""
+                if(!navigator.serviceWorker.controller)throw new Error('NoController');
+                const names=await caches.keys();
+                const p=new URL('./personal_profile.json',location.href).href;
+                const cache=await caches.open('__OLD_CACHE__');
+                const requests=await cache.keys();
+                if(!requests.some(r=>r.url===p))throw new Error('NoSyntheticProfileKey');
+                const unrelated=await caches.open('pae04-synthetic-unrelated-sentinel');
+                await unrelated.put(new Request(new URL('./__qa_sentinel',location.href)),new Response('QA ONLY'));
+                return {legacy:true,foreign:true};
+              """.replace("__OLD_CACHE__",EXPECTED_OLD_CACHE))
+              check(old.get("legacy") and old.get("foreign"),"OLD_CACHE_MISSING")
+              phase="SEED_SYNTHETIC_IDB"
+              seeded=driver.async_js("""
+                const db=await new Promise((ok,bad)=>{const r=indexedDB.open('__DB__',1);r.onsuccess=()=>ok(r.result);r.onerror=()=>bad(r.error);});
+                const names=['pressures','medications','intakes','intakeEvents'];
+                if(names.some(n=>!db.objectStoreNames.contains(n)))throw new Error('Schema');
+                const empty=await new Promise((ok,bad)=>{
+                  const tx=db.transaction(names,'readonly');const counts={};
+                  for(const name of names){const r=tx.objectStore(name).count();r.onsuccess=()=>{counts[name]=r.result};}
+                  tx.oncomplete=()=>ok(counts);tx.onerror=()=>bad(tx.error);
+                });
+                if(names.some(n=>empty[n]!==0))throw new Error('NotEmpty');
+                const at='2026-11-21T12:00:00.000Z';
+                const p={id:'QA_PRESS_0001',arm:'right',dateTime:'2026-11-21T12:00',createdAt:at,systolic:120,diastolic:80,pulse:70,note:'QA synthetic'};
+                const m={id:'QA_MED_0001',name:'QA Fiction 01',dose:'1 synthetic unit',kind:'regular',from:null,to:null,createdAt:at};
+                const i={id:'QA_INTAKE_0001',medId:m.id,date:'2026-11-21',markedAt:at,takenAtLocal:'2026-11-21T12:05',dailySlot:1,status:'active'};
+                const e={id:'QA_EVENT_0001',intakeId:i.id,medId:m.id,action:'marked',at:at,newTakenAtLocal:i.takenAtLocal};
+                await new Promise((ok,bad)=>{
+                  const tx=db.transaction(names,'readwrite');
+                  tx.objectStore('pressures').add(p);tx.objectStore('medications').add(m);
+                  tx.objectStore('intakes').add(i);tx.objectStore('intakeEvents').add(e);
+                  tx.oncomplete=ok;tx.onerror=()=>bad(tx.error);tx.onabort=()=>bad(tx.error);
+                });
+                db.close();return {saved:4};
+              """.replace("__DB__",DB))
+              check(seeded.get("saved")==4,"SYNTHETIC_SEED_FAILED")
+              phase="UPGRADE"
+              server.current=NEW
+              driver.async_js("""
+                const reg=await navigator.serviceWorker.getRegistration('./');
+                if(!reg)throw new Error('MissingRegistration');
+                await reg.update();
+                for(let j=0;j<90;j++){
+                  const keys=await caches.keys();
+                  if(keys.includes('__NEW_CACHE__')&&reg.active?.scriptURL.endsWith('/sw.js')){
+                    if(navigator.serviceWorker.controller) return true;
+                  }
+                  await new Promise(ok=>setTimeout(ok,250));
+                }
+                throw new Error('NewWorkerTimeout');
+              """.replace("__NEW_CACHE__",EXPECTED_NEW_CACHE),timeout=43)
+              driver.nav(base)
+              phase="VERIFY_NEW"
+              check("v2.3.3" in driver.sync_js("return document.querySelector('meta[name=\"application-version\"]')?.content||'';"),"NEW_VERSION_NOT_VISIBLE")
+              result=driver.async_js("""
+                const keys=await caches.keys();
+                if(!keys.includes('__NEW_CACHE__'))throw new Error('MissingNewCache');
+                if(keys.includes('__OLD_CACHE__'))throw new Error('LegacyCacheStillPresent');
+                if(!keys.includes('pae04-synthetic-unrelated-sentinel'))throw new Error('ForeignCacheLost');
+                for(const name of keys.filter(k=>k.startsWith('pae04-ht-stable-candidate-synthetic-schema1-cache-'))){
+                  const cache=await caches.open(name);
+                  const requests=await cache.keys();
+                  if(requests.some(req=>req.url===new URL('./personal_profile.json',location.href).href))
+                    throw new Error('RetiredKeyPresent');
+                }
+                const db=await new Promise((ok,bad)=>{const r=indexedDB.open('__DB__',1);r.onsuccess=()=>ok(r.result);r.onerror=()=>bad(r.error);});
+                const names=['pressures','medications','intakes','intakeEvents'];
+                const got=await new Promise((ok,bad)=>{
+                  const tx=db.transaction(names,'readonly');const values={};
+                  for(const n of names){const r=tx.objectStore(n).getAll();r.onsuccess=()=>{values[n]=r.result};}
+                  tx.oncomplete=()=>ok(values);tx.onerror=()=>bad(tx.error);
+                });
+                db.close();
+                if(names.some(n=>got[n].length!==1))throw new Error('LostRecords');
+                if(got.pressures[0].id!=='QA_PRESS_0001'||got.medications[0].id!=='QA_MED_0001'||
+                   got.intakes[0].id!=='QA_INTAKE_0001'||got.intakeEvents[0].id!=='QA_EVENT_0001')
+                  throw new Error('IDsChanged');
+                return {preserved:4,cacheRetired:true,foreignPreserved:true};
+              """.replace("__NEW_CACHE__",EXPECTED_NEW_CACHE).replace("__OLD_CACHE__",EXPECTED_OLD_CACHE).replace("__DB__",DB))
+              check(result.get("preserved")==4 and result.get("cacheRetired") and result.get("foreignPreserved"),"POST_UPGRADE_CHECK_FAILED")
+              phase="OFFLINE_REOPEN"
+              server.shutdown();server.server_close();server=None
+              driver.nav(base)
+              check("v2.3.3" in driver.sync_js("return document.querySelector('meta[name=\"application-version\"]')?.content||'';"),"OFFLINE_SHELL_NOT_VISIBLE")
+              offline=driver.async_js("""
+                const db=await new Promise((ok,bad)=>{const r=indexedDB.open('__DB__',1);r.onsuccess=()=>ok(r.result);r.onerror=()=>bad(r.error);});
+                const names=['pressures','medications','intakes','intakeEvents'];
+                const count=await new Promise((ok,bad)=>{
+                  const tx=db.transaction(names,'readonly');let total=0;
+                  for(const n of names){const r=tx.objectStore(n).count();r.onsuccess=()=>total+=r.result;}
+                  tx.oncomplete=()=>ok(total);tx.onerror=()=>bad(tx.error);
+                });
+                db.close();if(count!==4)throw new Error('OfflineRecordsLost');
+                return {records:count,controlled:!!navigator.serviceWorker.controller};
+              """.replace("__DB__",DB))
+              check(offline.get("records")==4 and offline.get("controlled"),"OFFLINE_DATA_OR_CONTROL_FAILED")
+              print("PASS_SCOPED_SAFARI_UPGRADE_01",flush=True)
+              print("PASS_VERSION_V233; PASS_PRESERVED_4_SYNTHETIC_RECORDS; PASS_RETIRED_CACHE_KEY; PASS_FOREIGN_CACHE; PASS_OFFLINE",flush=True)
+          
+          try:
+              run()
+          except Exception as exc:
+              kind="BLOCKED_ENGINE" if isinstance(exc,StopFirst) and str(exc).startswith(("BLOCKED_","WEBDRIVER_")) else "FAIL_STOP_FIRST"
+              print(kind+" phase="+phase+" code="+(str(exc) if isinstance(exc,StopFirst) else type(exc).__name__)[:90],flush=True)
+              sys.exitcode=1
+          finally:
+              if driver is not None:
+                  try:driver.stop()
+                  except Exception:pass
+              if server is not None:
+                  try:server.shutdown();server.server_close()
+                  except Exception:pass
+          if getattr(sys,"exitcode",0):
+              sys.exit(1)
+          PAE04_SAFARI_UPGRADE01_PY
