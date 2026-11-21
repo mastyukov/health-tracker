@@ -1,0 +1,121 @@
+{
+  "schema": "PAE04_PERSONAL_QA_PROFILE_V1",
+  "purpose": "PERSONAL_TEST_ONLY",
+  "description": "SYNTHETIC QA ONLY — no personal medicine or clinical data",
+  "constraints": {
+    "seed_intakes": false,
+    "seed_pressures": false
+  },
+  "medicines": [
+    {
+      "key": "qa-med-01",
+      "name": "QA-Тестовый препарат 01",
+      "dose": "1 усл. ед.",
+      "kind": "regular",
+      "category": "supplement",
+      "product_strength_mg": null,
+      "form": "таблетки",
+      "from": null,
+      "to": null
+    },
+    {
+      "key": "qa-med-02",
+      "name": "QA-Тестовый препарат 02",
+      "dose": "2 усл. ед.",
+      "kind": "course",
+      "category": "medicine",
+      "product_strength_mg": null,
+      "form": "таблетки",
+      "from": null,
+      "to": null
+    },
+    {
+      "key": "qa-med-03",
+      "name": "QA-Тестовый препарат 03",
+      "dose": "3 усл. ед.",
+      "kind": "asNeeded",
+      "category": "medicine",
+      "product_strength_mg": null,
+      "form": "таблетки",
+      "from": null,
+      "to": null
+    },
+    {
+      "key": "qa-med-04",
+      "name": "QA-Тестовый препарат 04",
+      "dose": "4 усл. ед.",
+      "kind": "regular",
+      "category": "medicine",
+      "product_strength_mg": null,
+      "form": "таблетки",
+      "from": null,
+      "to": null
+    },
+    {
+      "key": "qa-med-05",
+      "name": "QA-Тестовый препарат 05",
+      "dose": "5 усл. ед.",
+      "kind": "course",
+      "category": "supplement",
+      "product_strength_mg": null,
+      "form": "таблетки",
+      "from": null,
+      "to": null
+    },
+    {
+      "key": "qa-med-06",
+      "name": "QA-Тестовый препарат 06",
+      "dose": "6 усл. ед.",
+      "kind": "asNeeded",
+      "category": "medicine",
+      "product_strength_mg": null,
+      "form": "таблетки",
+      "from": null,
+      "to": null
+    },
+    {
+      "key": "qa-med-07",
+      "name": "QA-Тестовый препарат 07",
+      "dose": "7 усл. ед.",
+      "kind": "regular",
+      "category": "medicine",
+      "product_strength_mg": null,
+      "form": "таблетки",
+      "from": null,
+      "to": null
+    },
+    {
+      "key": "qa-med-08",
+      "name": "QA-Тестовый препарат 08",
+      "dose": "8 усл. ед.",
+      "kind": "course",
+      "category": "medicine",
+      "product_strength_mg": null,
+      "form": "таблетки",
+      "from": null,
+      "to": null
+    },
+    {
+      "key": "qa-med-09",
+      "name": "QA-Тестовый препарат 09",
+      "dose": "9 усл. ед.",
+      "kind": "asNeeded",
+      "category": "supplement",
+      "product_strength_mg": null,
+      "form": "таблетки",
+      "from": null,
+      "to": null
+    },
+    {
+      "key": "qa-med-10",
+      "name": "QA-Тестовый препарат 10",
+      "dose": "10 усл. ед.",
+      "kind": "regular",
+      "category": "medicine",
+      "product_strength_mg": null,
+      "form": "таблетки",
+      "from": null,
+      "to": null
+    }
+  ]
+}
