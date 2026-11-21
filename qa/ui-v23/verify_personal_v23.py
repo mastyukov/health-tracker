@@ -16,22 +16,22 @@ PINNED={
   "icons/icon-192.png": "c07d28a59f0d773c2e18af62b261b50389f60a94",
   "icons/icon-512.png": "09673205f1b64d689d8899c1096031ba351f34cc",
   "icons/icon.svg": "05b76763ede5f0d88e2b855f3d90ed72ddf64842",
-  "index.html": "beb4be69b81e31deb5d03543749ef549ce4953e2",
+  "index.html": "7d7da765367bdf86c6b1fd765eeb2248ad3287bf",
   "manifest.webmanifest": "e74f10f038d5a4e1c04936c1246435de58282d35",
   "med_guard.css": "1ebdff67c6ae4088759bc1c9059ee7f2f5fd6b2e",
   "med_guard.mjs": "9435ec752a887f0e6e5b696be6eaefc7d6999704",
   "med_matcher.mjs": "cf08822f5e71c8fb505fbec066e5eec9145215c6",
-  "offline_status.js": "15bebef4326103c10189bacbf118037a9f64e5b8",
-  "personal_adapter.js": "277b8bc2435d4bd9f4b30c89db15570ca2f2656f",
-  "personal_profile.json": "5b21b52962b8ff2ebc48e5a394ef3cd308d50b4c",
+  "offline_status.js": "b3c79d9887d5c7da69691fcc9de0ec4132b6d3d3",
+  "personal_adapter.js": "a65e83b165dd1d17315b2a9bdae288c40424b52e",
   "robots.txt": "1f53798bb4fe33c86020be7f10c44f29486fd190",
   "styles.css": "33fc30b7c85f7cdbf60f43a206fb1f47a9c72fb4",
-  "sw.js": "eca3ff2677e9ea8397214a015e92b90b0011a2a1"
+  "sw.js": "344f8c28882edf17e4889c478d1ead997853d3b4"
 }
 assert site.is_dir(),'SITE_MISSING'
 assert not any(f.is_symlink() for f in site.rglob('*')),'SYMLINK_IN_SITE'
 actual={f.relative_to(site).as_posix() for f in site.rglob('*') if f.is_file()}
-assert actual==set(PINNED),'ALLOWLIST_22_MISMATCH'
+assert actual==set(PINNED),'ALLOWLIST_21_MISMATCH'
+assert not (site/'personal_profile.json').exists(),'PUBLIC_PROFILE_PRESENT'
 for name,expected in sorted(PINNED.items()):
  b=(site/name).read_bytes() # checks byte identity; does not parse profile
  actual_sha=sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()
@@ -42,7 +42,7 @@ sw=(site/'sw.js').read_text(encoding='utf8')
 offline=(site/'offline_status.js').read_text(encoding='utf8')
 manifest=json.loads((site/'manifest.webmanifest').read_text(encoding='utf8'))
 assert 'iPhone UX v2.3.3' in html and 'Только вымышленные данные' not in html,'UI_NOT_PERSONAL'
-assert 'src="./personal_adapter.js"' in html,'PERSONAL_ADAPTER_MISSING'
+assert 'src="./personal_adapter.js"' not in html,'PERSONAL_ADAPTER_NOT_DISABLED'
 assert 'src="./offline_status.js"' in html,'OFFLINE_MODULE_MISSING'
 assert 'id="export-button"' in html and 'id="import-button"' in html,'BACKUP_CONTROLS_MISSING'
 assert "default-src 'self'" in html and 'unsafe-inline' not in html,'CSP_CHANGED'
@@ -53,8 +53,11 @@ assert "const BACKUP_FORMAT='pae04.healthtracker.synthetic-backup'" in app,'BACK
 assert 'navigator.onLine' not in app and 'Локальная база доступна' in app,'LOCAL_DB_BADGE_REGRESSION'
 assert 'TEST: импорт резервных копий отключён' not in app,'IMPORT_TEST_DISABLE'
 assert 'indexedDB.deleteDatabase' not in app,'UNAPPROVED_DB_DELETE'
-assert 'personal-v233-design02-finish-20261121' in sw and 'personal-v233-design02-finish-20261121' in offline,'CACHE_VERSION_MISMATCH'
-assert "'./personal_adapter.js'" in sw and "'./personal_profile.json'" in sw,'PERSONAL_ASSETS_NOT_PRECACHED'
+assert 'personal-v233-privacy01-20261121' in sw and 'personal-v233-privacy01-20261121' in offline,'CACHE_VERSION_MISMATCH'
+assert "'./personal_adapter.js'" not in sw and "'./personal_profile.json'" not in sw,'PERSONAL_ASSETS_STILL_PRECACHED'
+assert "'./personal_adapter.js'" not in offline and "'./personal_profile.json'" not in offline,'PERSONAL_ASSETS_OFFLINE_REQUIRED'
+adapter=(site/'personal_adapter.js').read_text(encoding='utf8')
+assert 'fetch(' not in adapter and 'personal_profile.json' not in adapter,'LEGACY_PROFILE_FETCH_PRESENT'
 assert 'indexedDB.open' not in sw and 'indexedDB.open' not in offline,'SW_TOUCHES_USER_DATA'
 assert manifest['id']=='./' and manifest['scope']=='./' and manifest['start_url']=='./index.html' and manifest['display']=='standalone','PWA_ID_CHANGED'
 assert 'id="v232-pressure-highlights"' in html,'PRESSURE_HIGHLIGHTS_MISSING'
@@ -62,4 +65,4 @@ assert 'id="v232-build-version"' in html,'VISIBLE_VERSION_MISSING'
 assert 'setupMedicationSections();' in (site/'home.js').read_text(encoding='utf8'),'MEDICATION_TABS_MISSING'
 assert 'v232PressureVisible+=30' in app,'PRESSURE_PAGINATION_MISSING'
 assert 'prnReason.maxLength=160' in app,'PRN_REASON_MISSING'
-print('PASS_STATIC_ONLY: EXACT 22/22 GIT BLOBS, v2.3.3; SAFARI RUNTIME NOT VERIFIED')
+print('PASS_STATIC_ONLY: EXACT 21/21 GIT BLOBS, v2.3.3 PRIVACY-01; SAFARI RUNTIME NOT VERIFIED')

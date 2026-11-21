@@ -1,12 +1,12 @@
 'use strict';
 /* PAE-04 CP-OFFLINE01: immutable app shell. Never accesses IndexedDB. */
 const CACHE_PREFIX='pae04-ht-stable-candidate-synthetic-schema1-cache-';
-const CACHE=CACHE_PREFIX+'personal-v233-design02-finish-20261121';
+const CACHE=CACHE_PREFIX+'personal-v233-privacy01-20261121';
 const SHELL=new URL('./index.html',self.registration.scope).href;
 const FILES=[
   './','./index.html','./app.js','./styles.css','./home.js','./home.css',
   './med_guard.mjs','./med_matcher.mjs','./med_guard.css',
-  './personal_adapter.js','./personal_profile.json','./offline_status.js',
+  './offline_status.js',
   './manifest.webmanifest','./icons/icon.svg','./icons/apple-touch-icon.png',
   './icons/icon-192.png','./icons/icon-512.png'
 ];
@@ -28,7 +28,8 @@ self.addEventListener('install',event=>{
 
 self.addEventListener('activate',event=>{
   // Preserve previous version caches for tabs still controlled by an older SW.
-  // These caches contain only static app assets, never medicine or pressure data.
+  // Prior cache versions may include retired profile assets; privacy cache
+  // remediation needs separate approval. This never touches IndexedDB.
   event.waitUntil((async()=>{
     const keys=await caches.keys();
     // Keep two preceding static caches for older Safari tabs; never delete data stores.
