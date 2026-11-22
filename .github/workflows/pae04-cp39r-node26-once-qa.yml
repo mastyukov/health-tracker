@@ -9,7 +9,7 @@ permissions:
   contents: read
 jobs:
   node26-once:
-    if: github.repository == 'mastyukov/health-tracker' && github.event_name == 'push' && github.ref == 'refs/heads/pilot/pae04-cp39r-node26-once-qa-20261122' && github.event.head_commit.message == 'PAE-04 CP39R: one-time Node26 synthetic QA workflow'
+    if: "github.repository == 'mastyukov/health-tracker' && github.event_name == 'push' && github.ref == 'refs/heads/pilot/pae04-cp39r-node26-once-qa-20261122' && github.event.head_commit.message == 'PAE-04 CP39R: one-time Node26 synthetic QA workflow'"
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
