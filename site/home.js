@@ -139,7 +139,10 @@
     add.type='button';add.addEventListener('click',()=>{
       navigate('pressure');
       const panel=el('pressure-form')?.closest('article.panel');
-      if(panel)requestAnimationFrame(()=>panel.scrollIntoView({block:'start',behavior:'instant'}));
+      if(panel)requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        const top=Math.max(0,Math.round(panel.getBoundingClientRect().top+window.scrollY-12));
+        window.scrollTo(0,top);
+      }));
     });
     holder.append(add);
   }

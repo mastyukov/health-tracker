@@ -2,7 +2,7 @@
 /* CP-OFFLINE01. Diagnostic only: never opens or modifies IndexedDB.
    A green network dot is NOT proof that the offline app shell is installed. */
 (function(){
-  const CACHE='pae04-ht-stable-candidate-synthetic-schema1-cache-personal-home-v7-candidate-20261121';
+  const CACHE='pae04-ht-stable-candidate-synthetic-schema1-cache-personal-home-v71-cachefix-20261122';
   const REQUIRED=[
     './','./index.html','./app.js','./styles.css','./home.js','./home.css',
     './med_guard.mjs','./med_matcher.mjs','./med_guard.css',
@@ -45,6 +45,9 @@
   if('serviceWorker' in navigator){
     navigator.serviceWorker.addEventListener('controllerchange',inspect);
     navigator.serviceWorker.ready.then(inspect).catch(inspect);
+    // Register or refresh the app shell; never reads or changes IndexedDB.
+    navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'})
+      .then(inspect).catch(inspect);
   }
   window.addEventListener('online',inspect);
   window.addEventListener('offline',inspect);
