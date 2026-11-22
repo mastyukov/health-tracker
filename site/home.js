@@ -136,7 +136,11 @@
       holder.append(element('p','ui01-empty','Измерений пока нет.'));
     }
     const add=element('button','primary ui01-wide-button','＋ Добавить измерение');
-    add.type='button';add.addEventListener('click',()=>navigate('pressure'));
+    add.type='button';add.addEventListener('click',()=>{
+      navigate('pressure');
+      const panel=el('pressure-form')?.closest('article.panel');
+      if(panel)requestAnimationFrame(()=>panel.scrollIntoView({block:'start',behavior:'instant'}));
+    });
     holder.append(add);
   }
   function courseActive(m,day) {
@@ -247,11 +251,15 @@
     const plan=v7Plan(day);
     const next=element('section','ui01-card ui01-v7-next');
     next.setAttribute('aria-label','Следующий неотмеченный слот');
-    next.append(element('h2','ui01-card-title','Следующий неотмеченный приём'));
+    const remaining=Math.max(0,plan.total-plan.checked);
+    const heading=plan.total?
+      'Неотмеченные приёмы · осталось '+remaining+' из '+plan.total:
+      'Неотмеченные приёмы';
+    next.append(element('h2','ui01-card-title',heading));
     if(plan.first){
       next.append(element('strong','ui01-v7-next-name',plan.first.med.name));
       next.append(element('p','ui01-v7-next-meta',
-        medSlotLabel(plan.first.goal,plan.first.slot)+' · плановое время не задано'));
+        'Первый в списке · '+medSlotLabel(plan.first.goal,plan.first.slot)+' · плановое время не задано'));
     }else if(plan.total>0&&plan.unconfigured===0){
       next.append(element('p','ui01-v7-complete-message','✓ Все настроенные слоты отмечены'));
     }else if(plan.total===0){
@@ -261,7 +269,7 @@
         'Настроенные слоты отмечены; есть препараты без расписания.'));
     }
     next.append(element('p','ui01-v7-disclaimer',
-      'Порядок слотов — не медицинская рекомендация и не напоминание.'));
+      'Порядок — по списку препаратов, а не по времени приёма. Это не рекомендация и не напоминание.'));
     host.append(next,element('h2','ui01-section-title','Лекарства сегодня'));
     let visible=0;
     for(const kind of ['regular','course','asNeeded']){
