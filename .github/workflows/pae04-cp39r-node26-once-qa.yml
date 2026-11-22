@@ -1,0 +1,33 @@
+name: PAE-04 CP39R Node.js 26 one-shot synthetic backup guard QA
+on:
+  push:
+    branches:
+      - pilot/pae04-cp39r-node26-once-qa-20261122
+    paths:
+      - .github/workflows/pae04-cp39r-node26-once-qa.yml
+permissions:
+  contents: read
+jobs:
+  node26-once:
+    if: github.repository == 'mastyukov/health-tracker' && github.event_name == 'push' && github.ref == 'refs/heads/pilot/pae04-cp39r-node26-once-qa-20261122' && github.event.head_commit.message == 'PAE-04 CP39R: one-time Node26 synthetic QA workflow'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CI: 'true'
+      PAE04_SYNTHETIC_ONLY: 'true'
+    steps:
+      - name: Checkout exact synthetic test and app.js
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: |
+            site/app.js
+            qa/ui-v23/test_backup_strict_unknown_fields.cjs
+          sparse-checkout-cone-mode: false
+      - name: Setup Node.js 26
+        uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+      - name: Run existing synthetic backup guard test exactly once
+        run: node --test qa/ui-v23/test_backup_strict_unknown_fields.cjs
