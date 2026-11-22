@@ -609,6 +609,14 @@ function renderMedications(){
       .sort((a,b)=>(a.takenAtLocal||'').localeCompare(b.takenAtLocal||'')||a.markedAt.localeCompare(b.markedAt));
     const recList=node('div','med-record-list');
     if(!records.length)recList.append(node('p','empty','За выбранную дату приёмов нет.'));
+    // Presentation only: keep all cancelled records and audit events accessible,
+    // but collapse them below active intakes. Never modify persisted data.
+    const cancelledCount=records.filter(i=>intakeStatus(i)==='cancelled').length;
+    const cancelledHistory=cancelledCount?node('details','med-cancelled-history'):null;
+    if(cancelledHistory){
+      const summary=node('summary','med-cancelled-history-summary',`История изменений · отменено: ${cancelledCount}`);
+      cancelledHistory.append(summary);
+    }
     for(const i of records){
       const active=intakeStatus(i)==='active',item=node('div',`intake-record ${active?'':'cancelled'}`);
       const header=node('div','intake-record-head');
@@ -649,8 +657,10 @@ function renderMedications(){
       if(intakeAuditNeedsReview(audit))item.append(node('div','audit-event','Проверка истории: события имеют одинаковое или некорректное время. Порядок не подтверждён.'));
       if(!audit.length)item.append(node('div','row-subtitle','Исходная история изменений недоступна (старый формат).'));
       for(const event of audit)item.append(node('div','audit-event',eventLabel(event)));
-      recList.append(item);
+      if(active||!cancelledHistory)recList.append(item);
+      else cancelledHistory.append(item);
     }
+    if(cancelledHistory)recList.append(cancelledHistory);
     wrap.append(recList);list.append(wrap);
   }
   const history=$('intake-list');history.replaceChildren();

@@ -327,3 +327,9 @@ html[data-appearance="dark"] .v232-med-pane .intake-record{background:#1b2634;bo
  html:not([data-appearance]) .v232-pressure-stat-number{color:#e8f3ff}
  html:not([data-appearance]) .v232-med-pane .intake-record{background:#1b2634;border-color:#324155}
 }
+
+/* CP39R UI-only: cancelled intake records remain intact in an accessible history. */
+.med-cancelled-history{margin-top:12px;border-top:1px solid #e6ebf3;padding-top:10px}
+.med-cancelled-history-summary{cursor:pointer;color:#55718f;font-size:12px;font-weight:650;padding:9px 5px;line-height:1.55;border-radius:8px;list-style-position:inside}
+.med-cancelled-history-summary:focus-visible{outline:3px solid #a5c4ff;outline-offset:2px}
+.med-cancelled-history[open]>.med-cancelled-history-summary{margin-bottom:8px}
