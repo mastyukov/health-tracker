@@ -12,14 +12,14 @@ async function snap(){return page.evaluate(async()=>JSON.stringify(await readBac
 async function load(url){await page.goto(url,{waitUntil:'load',timeout:20000});await ready()}
 async function run(){
  phase='EXACT_SOURCE';
- gate(process.env.GITHUB_REPOSITORY==='mastyukov/health-tracker'&&process.env.GITHUB_HEAD_REF==='sandbox/pae04-cp39r-r11b-live-compatible-20261122'&&process.env.GITHUB_EVENT_NAME==='pull_request'&&process.env.GITHUB_RUN_ATTEMPT==='1','ONE_SHOT_PIN');
- gate(git(['rev-parse','HEAD^'])===BASE,'PARENT_SHA');
+ gate(process.env.GITHUB_REPOSITORY==='mastyukov/health-tracker'&&process.env.GITHUB_HEAD_REF==='sandbox/pae04-cp39r-r11c-qa-fix-once-20261122'&&process.env.GITHUB_EVENT_NAME==='pull_request'&&process.env.GITHUB_RUN_ATTEMPT==='1','ONE_SHOT_PIN');
+ gate(git(['rev-parse','HEAD^'])==='e7ccf7409bf9bc41c97c8bf78a447f5e1a4bf389'&&git(['rev-parse','HEAD~2'])===BASE,'PARENT_SHA');
  for(const f of ['site/personal_profile.json','site/personal_adapter.js'])gate(git(['ls-tree','HEAD^','--',f])===git(['ls-tree','HEAD','--',f]),'PERSONAL_BLOB_UNCHANGED_'+path.basename(f));
  const app=fs.readFileSync(path.join(SITE,'app.js'),'utf8'),sw=fs.readFileSync(path.join(SITE,'sw.js'),'utf8'),off=fs.readFileSync(path.join(SITE,'offline_status.js'),'utf8');
  gate(app.includes("const DB_NAME='"+DB+"'")&&app.includes("const BACKUP_VERSION=3;")&&app.includes("const STORE_NAMES=['pressures','medications','intakes','intakeEvents'];")&&!/\bindexedDB\.deleteDatabase\s*\(/.test(app),'DATABASE_STORES_UNCHANGED');
  gate(app.includes('function assertKnownBackupFields(envelope)')&&app.split('assertKnownBackupFields(parsed);').length===3,'STRICT_GUARD');
  gate(sw.includes(NEW)&&off.includes(NEW),'CACHE_PAIR');
- const old={};for(const f of ['app.js','sw.js','offline_status.js'])old[f]=git(['show','HEAD^:site/'+f]);
+ const old={};for(const f of ['app.js','sw.js','offline_status.js'])old[f]=git(['show','HEAD~2:site/'+f]);
  gate(old['app.js'].includes("const DB_NAME='"+DB+"'")&&!old['app.js'].includes('function assertKnownBackupFields(envelope)'),'OLD_BUILD_PIN');
  const fakeProfile=JSON.stringify({privacy:'R11B_SYNTHETIC_ONLY',purpose:'TEST',medicines:[],constraints:{seed_pressures:false,seed_intakes:false}});
  phase='LOCAL_ONLY_SERVER';
@@ -85,4 +85,4 @@ async function run(){
 (async()=>{let status='BLOCKED_EXECUTION',errors=[];try{await run();status='PASS_SYNTHETIC_UPGRADE_ROLLBACK_SCOPED'}catch(e){errors.push({phase,message:String(e.stack||e).slice(0,900)})}finally{
 if(ctx)try{await ctx.close()}catch(e){errors.push({phase:'CLEANUP',message:String(e).slice(0,100)})}
 if(server)try{server.closeAllConnections();await new Promise(ok=>server.close(ok))}catch(e){errors.push({phase:'SERVER_CLOSE',message:String(e).slice(0,100)})}
-const report={checkpoint:'CP39R-R11B',status,phase,passed:passes,httpHits,durationSeconds:+((Date.now()-start)/1000).toFixed(2),errors,syntheticOnly:true,personalFilesRead:false,actualImport:false,actualRestore:false,macUsed:false,releaseGo:false};console.log('PAE04_R11B_RESULT '+JSON.stringify(report));if(status!=='PASS_SYNTHETIC_UPGRADE_ROLLBACK_SCOPED')process.exitCode=1;}})();
+const report={checkpoint:'CP39R-R11C',status,phase,passed:passes,httpHits:hits,durationSeconds:+((Date.now()-start)/1000).toFixed(2),errors,syntheticOnly:true,personalFilesRead:false,actualImport:false,actualRestore:false,macUsed:false,releaseGo:false};console.log('PAE04_R11C_RESULT '+JSON.stringify(report));if(status!=='PASS_SYNTHETIC_UPGRADE_ROLLBACK_SCOPED')process.exitCode=1;}})();
