@@ -11,7 +11,7 @@ PINNED={
   "CP_UI01_BUILD.json": "b92bd7c5e2720a663cf502ee2abfa9650a7e6dfa",
   "app.js": "3725145e5c48a23027723cc62de9572c0be7feec",
   "home.css": "e49331b5da9c1632f1d4b384ac05bc57506f50f9",
-  "home.js": "2859025ad28919a4956392d7431a947f1ad151e4",
+  "home.js": "d48cf0474d24550e0faa78a0287f5125ba7e1016",
   "icons/apple-touch-icon.png": "4cf9879b433979d1508c8ffdbb312e29123ef549",
   "icons/icon-192.png": "c07d28a59f0d773c2e18af62b261b50389f60a94",
   "icons/icon-512.png": "09673205f1b64d689d8899c1096031ba351f34cc",
