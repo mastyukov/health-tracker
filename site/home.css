@@ -148,3 +148,38 @@ body .brand small{letter-spacing:.07em}
 .ui01-home .ui01-med-group{border-radius:18px}
 .ui01-home .ui01-wide-button{min-height:48px}
 @media(max-width:740px){.ui01-home .ui01-med-group{padding:13px 15px}.ui01-home .ui01-card{margin-bottom:10px}.ui01-home .ui01-med-row{padding:8px 0}}
+
+/* CP HOME-V7: original Compact v7 visual language adapted to existing four-store PWA.
+   No schedule clocks, migrations or changes to actual intake records. */
+.ui01-home .ui01-v7-pressure-title{display:flex;align-items:center;gap:4px;font-size:calc(18px * var(--ht-home-scale))}
+.ui01-v7-heart{color:#d95161;font-size:24px;line-height:1;margin-right:2px}
+.ui01-home .ui01-v7-pressure-grid{display:grid;grid-template-columns:minmax(0,1.58fr) minmax(0,1fr);gap:10px;align-items:start;margin:12px 0 15px}
+.ui01-v7-pressure-main{display:flex;flex-direction:column;gap:6px;min-width:0}
+.ui01-v7-bp-primary{font-size:clamp(30px,8.8vw,42px);line-height:1.04;font-weight:800;letter-spacing:-.058em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ui01-v7-reading-meta{color:#65788d;font-size:calc(11px * var(--ht-home-scale));line-height:1.4;overflow-wrap:anywhere}
+.ui01-v7-pulse{font-size:calc(12px * var(--ht-home-scale));font-weight:650;color:#d95161;line-height:1.35}
+.ui01-v7-average{min-width:0;border-left:1px solid #e7edf1;padding:2px 0 0 11px;display:flex;flex-direction:column;gap:8px}
+.ui01-v7-average-label{font-size:calc(11px * var(--ht-home-scale));color:#65788d;line-height:1.35}
+.ui01-v7-bp-average{font-size:clamp(18px,5.4vw,24px);font-weight:750;line-height:1.2;letter-spacing:-.04em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ui01-home .ui01-v7-next{padding:14px 16px;border-color:#dbe7f0}
+.ui01-home .ui01-v7-next .ui01-card-title{font-size:calc(16px * var(--ht-home-scale));margin-bottom:8px}
+.ui01-v7-next-name{display:block;font-size:calc(17px * var(--ht-home-scale));overflow-wrap:anywhere}
+.ui01-v7-next-meta{margin:5px 0;color:#415b76;font-size:calc(13px * var(--ht-home-scale))}
+.ui01-v7-disclaimer{margin:8px 0 0;color:#69798b;font-size:calc(11px * var(--ht-home-scale));line-height:1.4}
+.ui01-v7-complete-message{color:#267b61;font-weight:700;font-size:calc(14px * var(--ht-home-scale));margin:6px 0}
+.ui01-v7-done-badge{display:inline-block;margin-left:6px;color:#298f72;font-size:calc(12px * var(--ht-home-scale));font-weight:700;white-space:nowrap}
+.ui01-v7-actual-time{color:#287357;font-size:calc(12px * var(--ht-home-scale))}
+.ui01-home .ui01-med-group .ui01-med-row{min-height:48px;padding:8px 0}
+.ui01-home .ui01-home-slot{display:flex;align-items:center;gap:3px;min-height:44px;min-width:44px;padding:5px 3px}
+.ui01-home .ui01-home-slot input{min-width:22px;min-height:22px}
+.ui01-v7-finished{border-top:1px solid #e7edf1;margin-top:8px;padding:2px 0}
+.ui01-v7-finished-summary{list-style:revert;cursor:pointer;min-height:48px;padding:12px 2px;color:#298f72;font-weight:700;font-size:calc(13px * var(--ht-home-scale));line-height:1.4}
+.ui01-v7-finished-summary:focus-visible{outline:3px solid #86b0f3;outline-offset:2px;border-radius:6px}
+.ui01-v7-finished:not([open]) .ui01-med-row{display:none}
+@media(max-width:355px){
+  .ui01-home .ui01-v7-pressure-grid{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:6px}
+  .ui01-v7-average{padding-left:7px}
+  .ui01-v7-bp-primary{font-size:clamp(27px,8vw,32px)}
+  .ui01-v7-bp-average{font-size:clamp(17px,5vw,20px)}
+}
+@media(prefers-reduced-motion:reduce){.ui01-v7-finished{scroll-behavior:auto}}

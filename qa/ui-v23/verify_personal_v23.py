@@ -10,8 +10,8 @@ PINNED={
   "CP_REAL01_BUILD.json": "b7010ad22f5503f1e63148514f628765e6edd248",
   "CP_UI01_BUILD.json": "b92bd7c5e2720a663cf502ee2abfa9650a7e6dfa",
   "app.js": "3725145e5c48a23027723cc62de9572c0be7feec",
-  "home.css": "f38d59e4ef42fa44e64dd471d677881fccb5d040",
-  "home.js": "e579cc0db5c8e360b3a57870d0e3bc36a087f1c7",
+  "home.css": "e49331b5da9c1632f1d4b384ac05bc57506f50f9",
+  "home.js": "2859025ad28919a4956392d7431a947f1ad151e4",
   "icons/apple-touch-icon.png": "4cf9879b433979d1508c8ffdbb312e29123ef549",
   "icons/icon-192.png": "c07d28a59f0d773c2e18af62b261b50389f60a94",
   "icons/icon-512.png": "09673205f1b64d689d8899c1096031ba351f34cc",
@@ -21,12 +21,12 @@ PINNED={
   "med_guard.css": "1ebdff67c6ae4088759bc1c9059ee7f2f5fd6b2e",
   "med_guard.mjs": "9435ec752a887f0e6e5b696be6eaefc7d6999704",
   "med_matcher.mjs": "cf08822f5e71c8fb505fbec066e5eec9145215c6",
-  "offline_status.js": "15bebef4326103c10189bacbf118037a9f64e5b8",
+  "offline_status.js": "43560156ccde7b6c89a45977a0ff177ae2bf96cc",
   "personal_adapter.js": "277b8bc2435d4bd9f4b30c89db15570ca2f2656f",
   "personal_profile.json": "5b21b52962b8ff2ebc48e5a394ef3cd308d50b4c",
   "robots.txt": "1f53798bb4fe33c86020be7f10c44f29486fd190",
   "styles.css": "33fc30b7c85f7cdbf60f43a206fb1f47a9c72fb4",
-  "sw.js": "eca3ff2677e9ea8397214a015e92b90b0011a2a1"
+  "sw.js": "04d3a5f9938fb939d43fca37efc6268e474e21ea"
 }
 assert site.is_dir(),'SITE_MISSING'
 assert not any(f.is_symlink() for f in site.rglob('*')),'SYMLINK_IN_SITE'
@@ -53,7 +53,7 @@ assert "const BACKUP_FORMAT='pae04.healthtracker.synthetic-backup'" in app,'BACK
 assert 'navigator.onLine' not in app and 'Локальная база доступна' in app,'LOCAL_DB_BADGE_REGRESSION'
 assert 'TEST: импорт резервных копий отключён' not in app,'IMPORT_TEST_DISABLE'
 assert 'indexedDB.deleteDatabase' not in app,'UNAPPROVED_DB_DELETE'
-assert 'personal-v233-design02-finish-20261121' in sw and 'personal-v233-design02-finish-20261121' in offline,'CACHE_VERSION_MISMATCH'
+assert 'personal-home-v7-candidate-20261121' in sw and 'personal-home-v7-candidate-20261121' in offline,'CACHE_VERSION_MISMATCH'
 assert "'./personal_adapter.js'" in sw and "'./personal_profile.json'" in sw,'PERSONAL_ASSETS_NOT_PRECACHED'
 assert 'indexedDB.open' not in sw and 'indexedDB.open' not in offline,'SW_TOUCHES_USER_DATA'
 assert manifest['id']=='./' and manifest['scope']=='./' and manifest['start_url']=='./index.html' and manifest['display']=='standalone','PWA_ID_CHANGED'
@@ -62,4 +62,4 @@ assert 'id="v232-build-version"' in html,'VISIBLE_VERSION_MISSING'
 assert 'setupMedicationSections();' in (site/'home.js').read_text(encoding='utf8'),'MEDICATION_TABS_MISSING'
 assert 'v232PressureVisible+=30' in app,'PRESSURE_PAGINATION_MISSING'
 assert 'prnReason.maxLength=160' in app,'PRN_REASON_MISSING'
-print('PASS_STATIC_ONLY: EXACT 22/22 GIT BLOBS, v2.3.3; SAFARI RUNTIME NOT VERIFIED')
+print('PASS_STATIC_ONLY: EXACT 22/22 GIT BLOBS, HOME-V7 PILOT; SAFARI RUNTIME NOT VERIFIED')
