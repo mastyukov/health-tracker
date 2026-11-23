@@ -1,0 +1,41 @@
+name: PAE-04 CP40 synthetic iPhone preview ZIP only (NO DEPLOY)
+on:
+  push:
+    branches:
+      - sandbox/pae04-approved-ux23-iphone-cp40-20261123-r1
+    paths:
+      - qa/cp40/safari_preview_package.py
+      - .github/workflows/pae04-cp40-preview-zip.yml
+permissions:
+  contents: read
+jobs:
+  package:
+    if: github.repository == 'mastyukov/health-tracker' && github.ref == 'refs/heads/sandbox/pae04-approved-ux23-iphone-cp40-20261123-r1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    container:
+      image: mcr.microsoft.com/playwright/python:v1.65.1-noble
+    env:
+      PAE04_SYNTHETIC_ONLY: 'true'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Match WebKit runner
+        run: python -m pip install --quiet --disable-pip-version-check 'playwright==1.65.1'
+      - name: Build sanitized preview and smoke WebKit, no external deployment
+        run: |
+          set -eu
+          test "$PAE04_SYNTHETIC_ONLY" = "true"
+          python -m py_compile qa/cp40/safari_preview_package.py
+          python qa/cp40/safari_preview_package.py
+      - name: Save synthetic preview ZIP and evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pae04-cp40-synthetic-iphone-preview-package
+          path: qa/cp40/safari_preview_artifact/*
+          if-no-files-found: warn
+          retention-days: 7
