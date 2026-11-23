@@ -355,3 +355,40 @@ html[data-appearance="dark"] .v232-med-pane .intake-record{background:#1b2634;bo
 html[data-appearance="dark"] #page-pressure .ux23-chart-metric{background:#263548}
 html[data-appearance="dark"] #page-pressure .ux23-chart-metric-value{color:#e8eef6}
 @media(prefers-color-scheme:dark){html:not([data-appearance]) #page-pressure .ux23-chart-metric{background:#263548}html:not([data-appearance]) #page-pressure .ux23-chart-metric-value{color:#e8eef6}}
+
+/* CP40 Visual-R1: approved iPhone screens, strictly presentation-only. */
+#page-pressure .pressure-chart-panel .v23-period-control{
+  flex:0 0 auto;min-height:0;
+}
+#page-overview .ui01-v7-pressure-grid{
+  display:block;grid-template-columns:none;margin:12px 0 15px;
+}
+#page-overview .ui01-v7-bp-primary{font-size:clamp(34px,9vw,44px)}
+#page-overview .ui01-average-card{
+  display:flex;flex-direction:column;align-items:flex-start;gap:7px;
+  margin-bottom:12px;
+}
+#page-overview .ui01-average-card[hidden]{display:none!important}
+#page-overview .ui01-average-title{display:flex;align-items:center;gap:10px}
+#page-overview .ux23-average-icon{display:inline-flex;color:var(--ux23-blue)}
+#page-overview .ux23-average-icon svg{display:block;width:26px;height:26px}
+#page-overview .ui01-average-bp{
+  font-size:clamp(32px,8.5vw,41px);font-weight:780;line-height:1.12;
+  letter-spacing:-.04em;font-variant-numeric:tabular-nums;color:inherit;
+}
+#page-overview .ui01-average-pulse{
+  color:var(--ux23-red);font-size:calc(13px * var(--ht-home-scale));
+  line-height:1.45;font-weight:650;display:inline-flex;align-items:center;
+}
+#page-meds .ux23-duplicate-kind-filter,
+#page-meds .ux23-fixed-history-period{display:none!important}
+#page-meds .v232-med-kind-tabs{gap:7px}
+#page-meds .v232-kind-button{
+  flex-direction:column;min-height:82px;padding:12px 5px;
+  gap:7px;white-space:normal;line-height:1.25;
+}
+#page-meds .v232-kind-button .ui01-kind-icon{margin:0;width:24px;height:24px}
+#page-meds .v232-kind-button .ui01-kind-icon svg{width:24px;height:24px}
+@media(max-width:390px){
+  #page-meds .v232-kind-button{font-size:11.5px;min-height:76px;padding:9px 3px}
+}
