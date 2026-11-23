@@ -1,10 +1,10 @@
-name: PAE-04 CP40 Visual-R1 — focused synthetic iPhone layout QA
+name: PAE-04 CP40 Medicines Compact-R3 focused synthetic iPhone QA
 on:
   push:
     branches:
       - sandbox/pae04-approved-ux23-iphone-cp40-20261123-r1
     paths:
-      - qa/cp40/visual_review_smoke.py
+      - qa/cp40/meds_compact_smoke.py
       - .github/workflows/pae04-cp40-iphone-browser.yml
 
 permissions:
@@ -40,14 +40,14 @@ jobs:
           test "$PAE04_SYNTHETIC_ONLY" = "true"
           test "$GITHUB_REF" = "refs/heads/sandbox/pae04-approved-ux23-iphone-cp40-20261123-r1"
           command -v google-chrome
-          python -m py_compile qa/cp40/visual_review_smoke.py
+          python -m py_compile qa/cp40/meds_compact_smoke.py
       - name: Focused visual layout QA for approved iPhone UI (synthetic memory)
-        run: python qa/cp40/visual_review_smoke.py
+        run: python qa/cp40/meds_compact_smoke.py
       - name: Save synthetic-only evidence; never deploy
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pae04-cp40-visual-r1-synthetic-evidence
-          path: qa/cp40/visual_results/*
+          name: pae04-cp40-meds-r3-synthetic-evidence
+          path: qa/cp40/meds_r3_results/*
           if-no-files-found: warn
           retention-days: 3
