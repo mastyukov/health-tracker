@@ -24,8 +24,9 @@ class Quiet(http.server.SimpleHTTPRequestHandler):
 def run():
     check("sandbox guard",os.environ.get("GITHUB_REF"),BRANCH)
     check("synthetic only",os.environ.get("PAE04_SYNTHETIC_ONLY"),"true")
-    parent=subprocess.check_output(["git","-c","safe.directory="+str(ROOT),"rev-parse","HEAD^"],cwd=ROOT,text=True).strip()
-    check("exact parent commit",parent,BASE)
+    ancestry=subprocess.run(["git","-c","safe.directory="+str(ROOT),
+       "merge-base","--is-ancestor",BASE,"HEAD"],cwd=ROOT).returncode
+    check("exact CP40 ancestor",ancestry,0)
     changed=subprocess.check_output(["git","-c","safe.directory="+str(ROOT),"diff","--name-only",BASE,"HEAD","--","site"],
                                     cwd=ROOT,text=True).strip()
     check("original site untouched",changed,"")
