@@ -65,7 +65,7 @@ def run():
           check("scheduled progress, no PRN",screen.locator(".ux23-meds-today-count").inner_text(),"1 / 3")
           check("three distinct slot checkboxes",screen.locator(".ux23-meds-plan-card .med-schedule-slot input").count(),3)
           check("one marked slot",screen.locator(".ux23-meds-plan-card .med-schedule-slot input:checked").count(),1)
-          check("actual time inline", "00:01" in screen.locator(".ux23-meds-plan-card .med-schedule-slots").inner_text())
+          check("actual time inline", "00:01" in "\n".join(screen.locator(".ux23-meds-plan-card .med-schedule-slots").all_text_contents()))
           check("time picker for scheduled slots",screen.locator(".ux23-meds-plan-card input.intake-time-input").first.is_visible())
           check("PRN confirm kept",screen.locator(".ux23-med-prn-card .intake-confirm-button").count(),1)
           check("PRN optional reason kept",screen.locator(".ux23-med-prn-card .v232-prn-reason-input").count(),1)
@@ -96,7 +96,7 @@ def run():
             render();
           }""")
           check("all planned checked",screen.locator(".ux23-meds-today-count").inner_text(),"3 / 3")
-          check("actual times persisted in memory",all(t in screen.locator(".ux23-meds-plan-card .med-schedule-slots").inner_text() for t in ["00:01","00:02","00:03"]))
+          check("actual times persisted in memory",all(t in "\n".join(screen.locator(".ux23-meds-plan-card .med-schedule-slots").all_text_contents()) for t in ["00:01","00:02","00:03"]))
           check("PRN remains unscheduled",screen.locator(".ux23-med-prn-card .med-schedule-slot").count(),0)
           page.screenshot(path=str(REPORT/"CP40_MR3_medicines_all_marked.png"),full_page=True)
           check("no JS page errors",ERRORS,[])
