@@ -88,7 +88,7 @@ def ready_sw(page):
         return keys.includes(cacheName) && !!registration?.active &&
           !!navigator.serviceWorker.controller && status?.dataset.ready==='true';
       } catch(_) {return false;}
-    }""",{"cacheName":CACHE},timeout=35000)
+    }""",arg={"cacheName":CACHE},timeout=35000)
 
 def launch_webkit(pw,profile):
     return pw.webkit.launch_persistent_context(str(profile),headless=True,
@@ -142,7 +142,7 @@ def run():
         check("local-shell-file:"+path, (ROOT/"site"/path).exists())
     sw=(ROOT/"site"/"sw.js").read_text(encoding="utf-8")
     check("SW static cache only","Never accesses IndexedDB" in sw)
-    check("SW cache version",CACHE in sw)
+    check("SW cache version", "const CACHE=CACHE_PREFIX+'personal-home-v71-cachefix-20261122'" in sw and "const CACHE_PREFIX='pae04-ht-stable-candidate-synthetic-schema1-cache-'" in sw)
     check("SW explicit offline fetch", "self.addEventListener('fetch'" in sw)
     REPORT.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="pae04_cp40_offline_webkit_") as tmp:
