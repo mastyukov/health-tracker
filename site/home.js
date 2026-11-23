@@ -105,13 +105,13 @@
   function drawPressure(day){
     const holder=el('ui01-pressure');if(!holder)return;
     holder.replaceChildren();
-    const title=element('h2','ui01-card-title ui01-v7-pressure-title','Давление');
+    const title=element('h2','ui01-card-title ui01-v7-pressure-title','Последний замер');
     const icon=element('span','ui01-tonometer-icon');
     icon.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="#5486B9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="9" width="33" height="43" rx="7"/><rect x="12" y="15" width="23" height="19" rx="3"/><path d="M17 22h12M17 27h8"/><circle cx="24" cy="43" r="3"/><path d="M40 43c11-2 7 10 14 9"/><rect x="49" y="39" width="12" height="20" rx="4"/></svg>';
     title.prepend(icon);holder.append(title);
-    // Retire separate average card: v7 shows the mean beside today's last reading.
-    const oldMean=el('ui01-pressure-average');
-    if(oldMean){oldMean.replaceChildren();oldMean.hidden=true;}
+    // Approved iPhone UX v2.3: last actual reading and today's mean are separate cards.
+    const avgHost=el('ui01-pressure-average');
+    if(avgHost){avgHost.replaceChildren();avgHost.hidden=true;}
     const view=v7PressureView(snapshot.pressures,day);
     if(view.latest){
       const grid=element('div','ui01-v7-pressure-grid');
@@ -126,23 +126,28 @@
         left.append(pulse);
       }else left.append(element('span','ui01-v7-reading-meta','Пульс не указан'));
       grid.append(left);
-      if(view.average){
-        const avg=element('div','ui01-v7-average');
-        avg.append(element('span','ui01-v7-average-label',
-          'Среднее сегодня · '+view.average.count+' замера'));
-        avg.append(element('strong','ui01-v7-bp-average',
-          view.average.systolic+' / '+view.average.diastolic));
-        if(view.average.pulse!==null){
-          avg.append(element('span','ui01-v7-reading-meta',
-            'Пульс '+view.average.pulse+' · средний'));
-        }
-        grid.append(avg);
-      }
       holder.append(grid);
+      if(view.average && avgHost){
+        const heading=element('h2','ui01-card-title ui01-average-title','Среднее за день');
+        const calendar=element('span','ux23-average-icon');
+        calendar.setAttribute('aria-hidden','true');
+        calendar.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01"/></svg>';
+        heading.prepend(calendar);
+        avgHost.append(heading);
+        avgHost.append(element('strong','ui01-average-bp',
+          view.average.systolic+' / '+view.average.diastolic));
+        const pulse=element('div','ui01-average-pulse',
+          view.average.pulse===null?'Средний пульс — не указан':'Пульс '+view.average.pulse+' уд/мин');
+        if(view.average.pulse!==null)pulse.prepend(ux23OutlineIcon('activity'));
+        avgHost.append(pulse);
+        avgHost.append(element('span','ui01-v7-reading-meta',
+          view.average.count+' замера сегодня'));
+        avgHost.hidden=false;
+      }
     }else{
       holder.append(element('p','ui01-empty','Измерений пока нет.'));
     }
-    const add=element('button','primary ui01-wide-button','＋ Добавить измерение');
+    const add=element('button','primary ui01-wide-button','+ Добавить измерение');
     add.type='button';add.addEventListener('click',()=>{
       navigate('pressure');
       const panel=el('pressure-form')?.closest('article.panel');
@@ -385,9 +390,16 @@
     const kindTabs=element('div','v232-med-kind-tabs');
     kindTabs.setAttribute('role','group');kindTabs.setAttribute('aria-label','Категория истории');
     const options=[['regular','Постоянные'],['course','Курсовые'],['asNeeded','Ситуативные']];
-    const sync=()=>kindTabs.querySelectorAll('button').forEach(button=>{
-      button.setAttribute('aria-pressed',String(button.dataset.kind===kind.value));
-    });
+    const sync=()=>{
+      kindTabs.querySelectorAll('button').forEach(button=>{
+        button.setAttribute('aria-pressed',String(button.dataset.kind===kind.value));
+      });
+      // Tabs carry approved outline icons; retire the duplicate native type selector.
+      kind.closest('label')?.classList.add('ux23-duplicate-kind-filter');
+      // Permanent/course periods are fixed; only PRN has the approved 1/3-month choice.
+      el('med-history-period')?.closest('label')?.classList.toggle(
+        'ux23-fixed-history-period',kind.value!=='asNeeded');
+    };
     for(const [value,title] of options){
       const button=element('button','v232-kind-button');button.type='button';button.dataset.kind=value;
       button.append(ux23OutlineIcon(value),document.createTextNode(title));
