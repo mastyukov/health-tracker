@@ -384,6 +384,20 @@
     while(next&&next!==divider){moving.push(next);next=next.nextElementSibling;}
     if(next!==divider||moving.length<2)return;
     for(const n of moving)todayPane.append(n);
+    // Keep every original instruction and search control accessible, but out of the
+    // approved compact day view until explicitly opened.
+    const guidance=todayPane.querySelector(':scope > .form-hint');
+    if(guidance){
+      const help=element('details','ux23-meds-help');
+      help.append(element('summary','ux23-meds-help-summary','Как отмечать приём'));
+      guidance.replaceWith(help);help.append(guidance);todayPane.append(help);
+    }
+    const search=todayPane.querySelector(':scope > .compact-search');
+    if(search){
+      const finder=element('details','ux23-meds-search');
+      finder.append(element('summary','ux23-meds-help-summary','Поиск препарата'));
+      search.replaceWith(finder);finder.append(search);todayPane.append(finder);
+    }
     historyPane.append(histHead,history);divider.remove();
     panel.prepend(tabs,todayPane,historyPane);
     tabs.querySelector('[data-med-view="today"]').click();

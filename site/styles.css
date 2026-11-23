@@ -430,3 +430,107 @@ html[data-appearance="dark"] #page-meds .ux23-meds-today-count{color:#e8eef6}
   html:not([data-appearance]) #page-meds .ux23-meds-today-title,
   html:not([data-appearance]) #page-meds .ux23-meds-today-count{color:#e8eef6}
 }
+
+/* CP40 Medicines Compact-R3: approved iPhone layout, existing handlers + audit unchanged. */
+#page-meds .page-head .eyebrow,
+#page-meds .page-head .muted,
+#page-meds .page-head .tag{display:none}
+#page-meds .page-head{margin:8px 0 12px}
+#page-meds .page-head h1{font-size:clamp(29px,8vw,35px);margin:0}
+#page-meds .two-col.uneven{display:flex;flex-direction:column;gap:12px}
+#page-meds .two-col.uneven>.v232-add-med-panel{order:2;margin:0}
+#page-meds .two-col.uneven>article.panel:not(.v232-add-med-panel){
+ order:1;padding:13px;border:0;background:transparent;box-shadow:none;
+}
+#page-meds #v232-meds-today>.panel-heading{justify-content:flex-end;margin:6px 0 10px;padding:0}
+#page-meds #v232-meds-today>.panel-heading h2{display:none}
+#page-meds #v232-meds-today>.panel-heading .inline-date{margin-left:auto}
+#page-meds #v232-meds-today>.panel-heading .wheel-trigger{min-height:44px}
+#page-meds #v232-meds-today #med-list{
+ border:0;background:transparent;border-radius:0;padding:0;
+ max-height:none;overflow:visible;display:flex;flex-direction:column;gap:14px;
+}
+#page-meds .ux23-meds-plan-card,
+#page-meds .ux23-med-prn-card{
+ background:#fff;border:1px solid #e3e9f2;border-radius:20px;
+ padding:17px 16px 14px;min-width:0;
+}
+#page-meds .ux23-meds-plan-card .ux23-med-kind-group{border-bottom:1px solid #e4e9f1}
+#page-meds .ux23-meds-plan-card .ux23-med-kind-group:last-child{border-bottom:0}
+#page-meds .ux23-med-kind-heading{font-size:19px;margin:9px 0 8px;line-height:1.35}
+#page-meds .ux23-med-kind-group .med-block{margin:0;padding:10px 0 12px;border:0}
+#page-meds .ux23-med-kind-group .med-block+.med-block{border-top:1px solid #edf1f5}
+#page-meds .ux23-med-kind-group .med-row{display:block;padding:0;margin:0 0 4px}
+#page-meds .ux23-med-kind-group .row-title{font-size:16px;font-weight:720;line-height:1.3}
+#page-meds .ux23-course-period{font-size:12px;line-height:1.4;margin-top:3px;color:#6c7785}
+#page-meds .ux23-med-kind-group .med-time-controls{
+ width:100%;display:flex;flex-wrap:wrap;align-items:end;gap:8px;
+ padding:0;margin:3px 0 5px;
+}
+#page-meds .ux23-med-kind-group .intake-time-label{
+ display:flex;flex-wrap:wrap;align-items:center;gap:7px;
+ font-size:12px;font-weight:600;color:#6c7785;margin:0;
+}
+#page-meds .ux23-med-kind-group .intake-time-label .intake-time-input{
+ width:112px;min-width:112px;min-height:44px;margin:0;
+}
+#page-meds .ux23-med-kind-group .med-schedule-slots{
+ display:grid;gap:3px;padding:4px 0 2px;
+}
+#page-meds .ux23-med-kind-group .med-schedule-slot{
+ min-height:44px;display:flex;align-items:center;gap:11px;
+ padding:5px 0;font-size:15px;line-height:1.35;color:#182536;
+}
+#page-meds .ux23-med-kind-group .med-schedule-slot input[type="checkbox"]{
+ width:26px;height:26px;min-width:26px;accent-color:#279B80;
+}
+#page-meds .ux23-prn-caption{
+ font-size:13px;color:#6c7785;line-height:1.55;margin:5px 0 10px;
+}
+#page-meds .ux23-med-prn-card{border-bottom:1px solid #e3e9f2}
+#page-meds .ux23-med-prn-card .med-time-controls{
+ display:flex;flex-wrap:wrap;align-items:end;gap:11px;
+}
+#page-meds .ux23-med-prn-card .v232-prn-reason-label{
+ flex:1 1 190px;font-size:12px;
+}
+#page-meds .ux23-med-prn-card .intake-confirm-button{
+ width:100%;min-height:46px;
+}
+#page-meds .ux23-med-advanced{margin:2px 0 0;border:0;padding:0}
+#page-meds .ux23-med-advanced-title{font-size:12px;min-height:44px;color:#60758d}
+#page-meds .ux23-med-advanced[open]{
+ background:#f7f9fc;padding:8px 11px;border-radius:12px;margin:6px 0;
+}
+#page-meds .ux23-meds-help,
+#page-meds .ux23-meds-search{
+ margin-top:10px;padding:3px 12px;border:1px solid #e7edf5;
+ border-radius:12px;background:#fff;
+}
+#page-meds .ux23-meds-help-summary{
+ cursor:pointer;display:flex;align-items:center;
+ min-height:44px;color:#60758d;font-size:13px;font-weight:650;
+}
+#page-meds .ux23-meds-help .form-hint{margin:5px 0 12px;line-height:1.6}
+#page-meds .ux23-meds-search .compact-search{display:block;margin:4px 0 13px}
+#page-meds .v232-add-med-panel .v232-add-med>summary{min-height:46px}
+html[data-appearance="dark"] #page-meds .ux23-meds-plan-card,
+html[data-appearance="dark"] #page-meds .ux23-med-prn-card,
+html[data-appearance="dark"] #page-meds .ux23-meds-help,
+html[data-appearance="dark"] #page-meds .ux23-meds-search{
+ background:#1b2634;border-color:#324155;
+}
+html[data-appearance="dark"] #page-meds .ux23-med-kind-group .med-schedule-slot{color:#e8eef6}
+@media(prefers-color-scheme:dark){
+ html:not([data-appearance]) #page-meds .ux23-meds-plan-card,
+ html:not([data-appearance]) #page-meds .ux23-med-prn-card,
+ html:not([data-appearance]) #page-meds .ux23-meds-help,
+ html:not([data-appearance]) #page-meds .ux23-meds-search{
+  background:#1b2634;border-color:#324155;
+ }
+ html:not([data-appearance]) #page-meds .ux23-med-kind-group .med-schedule-slot{color:#e8eef6}
+}
+@media(max-width:390px){
+ #page-meds .ux23-meds-plan-card,#page-meds .ux23-med-prn-card{padding:15px 13px}
+ #page-meds .ux23-med-kind-heading{font-size:18px}
+}

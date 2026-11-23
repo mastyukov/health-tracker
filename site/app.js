@@ -531,6 +531,8 @@ function renderMedications(){
     const active=snapshot.intakes.filter(i=>i.medId===med.id&&i.date===day&&intakeStatus(i)==='active');
     marked+=medDailySlots(med,active).filter(Boolean).length;
   }
+  const planCard=node('section','ux23-meds-plan-card');
+  planCard.setAttribute('aria-label','Плановые приёмы сегодня');
   const summary=node('div','ux23-meds-today-summary');
   summary.append(node('h3','ux23-meds-today-title','Лекарства сегодня'),
     node('strong','ux23-meds-today-count',marked+' / '+planned));
@@ -542,7 +544,7 @@ function renderMedications(){
   progress.setAttribute('aria-valuenow',String(marked));
   const fill=node('span','ux23-meds-today-fill');
   fill.style.width=(planned?Math.round(marked/planned*100):0)+'%';
-  progress.append(fill);list.append(summary,progress);
+  progress.append(fill);planCard.append(summary,progress);list.append(planCard);
   const icons={
     regular:'<path d="M6 16c5 0 7-8 12-8a4 4 0 0 1 0 8c-5 0-7-8-12-8a4 4 0 1 0 0 8"/>',
     course:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01"/>',
@@ -558,7 +560,15 @@ function renderMedications(){
     const icon=node('span','ui01-kind-icon kind-'+kind);
     icon.setAttribute('aria-hidden','true');
     icon.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+icons[kind]+'</svg>';
-    heading.prepend(icon);group.append(heading);list.append(group);
+    heading.prepend(icon);group.append(heading);
+    if(kind==='asNeeded'){
+      group.classList.add('ux23-med-prn-card');
+      group.append(node('p','ux23-prn-caption',
+        'Отдельные фактические приёмы. Без планового времени и напоминаний.'));
+      list.append(group);
+    }else{
+      planCard.append(group);
+    }
     kindGroups[kind]=group;
   }
   for(const med of meds){
@@ -570,10 +580,15 @@ function renderMedications(){
     title.append(node('span','med-type',KINDS[med.kind]));
     let sub=medDescription(med);
     if(med.kind==='course')sub+=' · '+(med.from||'…')+' – '+(med.to||'…');
-    desc.append(title,node('div','row-subtitle',sub));
+    desc.append(title);
+    if(med.kind==='course')desc.append(node('div','ux23-course-period',
+      (med.from||'Дата не указана')+' — '+(med.to||'Дата не указана')));
+    advanced.append(node('p','row-subtitle ux23-med-technical-detail',sub));
     const existing=snapshot.intakes.filter(i=>i.medId===med.id&&i.date===day&&intakeStatus(i)==='active');
     const goal=med.kind==='asNeeded'?null:medDailyTarget(med),progress=medDailyProgress(med,existing);
-    desc.append(node('div','row-subtitle',goal===null?`За день: ${existing.length} подтверждённых приёмов`:`За день: ${progress.checked}/${goal} · всего фактов: ${existing.length}`));
+    advanced.append(node('p','row-subtitle ux23-med-technical-count',goal===null?
+      `За день: ${existing.length} подтверждённых приёмов`:
+      `За день: ${progress.checked}/${goal} · всего фактов: ${existing.length}`));
     const frequencyLabel=node('label','med-frequency-label','Приёмов за день (учёт, не назначение)');
     const frequency=node('select','med-frequency-select');
     frequency.setAttribute('aria-label',`Кратность для ${med.name}`);
@@ -588,7 +603,7 @@ function renderMedications(){
     });
     frequencyLabel.hidden=med.kind==='asNeeded';frequencyLabel.append(frequency);advanced.append(frequencyLabel);
     row.append(desc);
-    const controls=node('div','med-time-controls'),label=node('label','intake-time-label','Время нового приёма');
+    const controls=node('div','med-time-controls'),label=node('label','intake-time-label','Фактическое время');
     const time=node('input','intake-time-input');time.type='time';time.step=60;
     time.value=day===today()?clockLocal(new Date()):'';
     time.setAttribute('aria-label',`Время нового приёма ${med.name}`);
@@ -635,7 +650,7 @@ function renderMedications(){
         confirmButton.textContent='✓ Подтвердить приём';
       }
     });
-    row.append(controls);wrap.append(row);
+    wrap.append(row,controls);
     if(goal!==null){
       const schedule=node('div','med-schedule-slots');schedule.setAttribute('role','group');
       schedule.setAttribute('aria-label',`Отметки для ${med.name}`);
