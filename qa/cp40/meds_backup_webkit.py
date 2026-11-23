@@ -95,7 +95,7 @@ def run():
     check("atomic merge path retained","function atomicMerge(data)" in (ROOT/"site/app.js").read_text())
     RESULTS.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="pae04_cp40_backup_webkit_") as tmp:
-        a=prepare_origin(tmp,"source"),b=prepare_origin(tmp,"destination")
+        a=prepare_origin(tmp,"source");b=prepare_origin(tmp,"destination")
         try:
             with sync_playwright() as pw:
                 browser=pw.webkit.launch(headless=True)
