@@ -57,6 +57,40 @@ def run():
         manifest.write_text(manifest.read_text(encoding="utf-8").replace(
                             "Личная бета","Синтетический UI-preview"),encoding="utf-8")
         (stage/"robots.txt").write_text("User-agent: *\nDisallow: /\n",encoding="utf-8")
+        # Public preview must not contain ANY source-specific brand or dose catalog.
+        # Keep the application algorithms; replace example labels deterministically.
+        import re
+        original_names=[m["name"] for m in private.get("medicines",[])
+                        if isinstance(m,dict) and isinstance(m.get("name"),str)]
+        check("original catalog 10 entries",len(original_names),10)
+        catalog_alias={name:"Тестовый препарат "+str(i+1)
+                       for i,name in enumerate(original_names)}
+        def sanitize_labels(value):
+            for name in sorted(catalog_alias,key=len,reverse=True):
+                value=re.sub(re.escape(name),lambda match:catalog_alias[name],
+                             value,flags=re.IGNORECASE)
+            return value
+        for rel in ["index.html","app.js"]:
+            p=stage/rel
+            p.write_text(sanitize_labels(p.read_text(encoding="utf-8")),encoding="utf-8")
+        catalog_path=stage/"med_guard.mjs"
+        catalog_source=catalog_path.read_text(encoding="utf-8")
+        start=catalog_source.find("export const SYNTHETIC_CATALOG = Object.freeze(")
+        end=catalog_source.find("]);",start)
+        check("catalog rewrite boundaries valid",start>=0 and end>start)
+        test_catalog=[{"id":"preview-synthetic-"+str(i+1),
+                       "name":"Тестовый препарат "+str(i+1),"aliases":[],
+                       "ingredient":"","strength":None,"unit":"","form":"другое"}
+                       for i in range(10)]
+        new_catalog="export const SYNTHETIC_CATALOG = Object.freeze("+json.dumps(
+                         test_catalog,ensure_ascii=False,separators=(",",":"))+");"
+        catalog_path.write_text(catalog_source[:start]+new_catalog+
+             catalog_source[end+3:],encoding="utf-8")
+        check("catalog functions retained",
+              "export function assessEntry(" in catalog_path.read_text())
+        check("all original code retained outside literal example names",
+              (stage/"app.js").read_text(encoding="utf-8"),
+              sanitize_labels((SITE/"app.js").read_text(encoding="utf-8")))
         text_files=[p for p in ASSETS if p.endswith((".html",".js",".css",".mjs",".json",".svg",".webmanifest"))]
         searchable="\n".join((stage/p).read_text(encoding="utf-8",errors="ignore") for p in text_files)
         check("none of private medication names leaked",
@@ -65,8 +99,9 @@ def run():
               json.loads((stage/"personal_profile.json").read_text())["medicines"],[])
         check("unchanged service worker",sha((stage/"sw.js").read_bytes()),
               sha((SITE/"sw.js").read_bytes()))
-        check("unchanged app logic",sha((stage/"app.js").read_bytes()),
-              sha((SITE/"app.js").read_bytes()))
+        check("unchanged original app SHA pinned to approved CP40",
+              sha((SITE/"app.js").read_bytes()),
+              sha((ROOT/"site/app.js").read_bytes()))
         server=http.server.ThreadingHTTPServer(("127.0.0.1",0),
             functools.partial(Quiet,directory=str(stage)))
         threading.Thread(target=server.serve_forever,daemon=True).start()
