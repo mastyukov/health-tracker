@@ -1,0 +1,46 @@
+name: PAE-04 CP41-SG01 — strict external backup 4 negative WebKit QA
+on:
+  push:
+    branches:
+      - sandbox/pae04-approved-ux23-iphone-cp40-20261123-r1
+    paths:
+      - qa/cp41/strict_unknown_fields_webkit.py
+      - .github/workflows/pae04-cp41-sg01-webkit.yml
+permissions:
+  contents: read
+concurrency:
+  group: pae04-cp41-sg01-webkit
+  cancel-in-progress: false
+jobs:
+  strict-backup:
+    if: github.repository == 'mastyukov/health-tracker' && github.ref == 'refs/heads/sandbox/pae04-approved-ux23-iphone-cp40-20261123-r1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    container:
+      image: mcr.microsoft.com/playwright/python:v1.65.1-noble
+    env:
+      PAE04_SYNTHETIC_ONLY: 'true'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout only approved sandbox; no persisted token
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use matching WebKit Playwright
+        run: python -m pip install --quiet --disable-pip-version-check 'playwright==1.65.1'
+      - name: Guard authorized sandbox and syntax
+        run: |
+          set -eu
+          test "$PAE04_SYNTHETIC_ONLY" = "true"
+          test "$GITHUB_REF" = "refs/heads/sandbox/pae04-approved-ux23-iphone-cp40-20261123-r1"
+          python -m py_compile qa/cp41/strict_unknown_fields_webkit.py
+      - name: One targeted four-case signed JSON WebKit Security Gate QA
+        run: python qa/cp41/strict_unknown_fields_webkit.py
+      - name: Save synthetic-only JSON and one screenshot; no backup originals
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pae04-cp41-sg01-webkit-synthetic-evidence
+          path: qa/cp41/sg01_results/*
+          if-no-files-found: warn
+          retention-days: 7
