@@ -82,9 +82,8 @@ def run():
     for rel, expected in PINNED.items():
         blob = subprocess.check_output(["git", "hash-object", rel], cwd=ROOT, text=True).strip()
         check("pinned-source:" + rel, blob, expected)
-    check("run-on-sandbox-only", subprocess.check_output(
-        ["git", "branch", "--show-current"], cwd=ROOT, text=True).strip(),
-        "sandbox/pae04-approved-ux23-iphone-cp40-20261123-r1")
+    check("run-on-sandbox-only", os.environ.get("GITHUB_REF"),
+        "refs/heads/sandbox/pae04-approved-ux23-iphone-cp40-20261123-r1")
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="pae04_cp40_synthetic_") as tmp:
         isolated = Path(tmp) / "site"
