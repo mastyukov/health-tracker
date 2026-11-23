@@ -111,11 +111,14 @@ def run():
                     page.goto(f"http://127.0.0.1:{server.server_port}/index.html",
                               wait_until="domcontentloaded", timeout=30000)
                     page.wait_for_function(
-                        "() => !!window.PAE04CPUI01 && typeof render === 'function' && typeof db !== 'undefined' && !!db",
+                        "() => !!window.PAE04CPUI01 && typeof render === 'function' && typeof db !== 'undefined' && !!db && !!document.querySelector('.status-dot.online')",
                         timeout=20000)
                     fixture = seed(page)
                     check("synthetic-fixture-count", fixture["count"], 4)
                     check("synthetic-medication-count", fixture["meds"], 3)
+                    page.screenshot(path=str(REPORT_DIR/"CP40_home_synthetic_debug.png"),full_page=False)
+                    check("home-rendered-after-init",page.locator(
+                        "#ui01-pressure .ui01-v7-bp-primary").count(),1)
                     check("home-latest-actual", "118 / 75" in page.locator(
                         "#ui01-pressure .ui01-v7-bp-primary").inner_text())
                     check("home-average-today", "113 / 72" in page.locator(
