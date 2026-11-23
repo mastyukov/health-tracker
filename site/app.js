@@ -825,6 +825,93 @@ function validateIntakeEvent(e){
 
 function canonical(value){if(Array.isArray(value))return'['+value.map(canonical).join(',')+']';if(value!==null&&typeof value==='object'){return'{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+canonical(value[k])).join(',')+'}'}return JSON.stringify(value)}
 async function sha256(value){if(!crypto.subtle)throw Error('SHA-256 требует HTTPS или localhost');const bytes=new TextEncoder().encode(canonical(value));const digest=await crypto.subtle.digest('SHA-256',bytes);return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');}
+// CP39: strict unknown-field policy for EXTERNAL backup files only.
+// Local IndexedDB records and exports are not modified by this gate.
+function assertKnownBackupFields(envelope){
+  const allowedEnvelope=['format','version','exportedAt','data','sha256'];
+  const allowedRecords={
+    pressures:['id','systolic','diastolic','pulse','dateTime','note','arm','createdAt'],
+    intakes:['id','medId','date','markedAt','takenAtLocal','dailySlot','updatedAt','status','cancelledAt','reason'],
+    intakeEvents:['id','intakeId','medId','action','at','oldTakenAtLocal','newTakenAtLocal']
+  };
+  const assertFields=(record,allowed,label)=>{
+    if(!record||typeof record!=='object'||Array.isArray(record))throw Error('Некорректная запись резервной копии: '+label);
+    for(const key of Object.keys(record))if(!allowed.includes(key))
+      throw Error('Неизвестное поле резервной копии ('+label+'): '+key);
+  };
+  assertFields(envelope,allowedEnvelope,'envelope');
+  if(!envelope.data||typeof envelope.data!=='object'||Array.isArray(envelope.data))
+    throw Error('Некорректные данные резервной копии');
+  for(const [section,allowed] of Object.entries(allowedRecords)){
+    const rows=envelope.data[section];
+    if(section==='intakeEvents'&&(envelope.version===1||envelope.version===2)&&rows===undefined)continue;
+    if(!Array.isArray(rows))throw Error('Отсутствует таблица резервной копии: '+section);
+    for(const row of rows)assertFields(row,allowed,section);
+  }
+}
+
+function checkNoDuplicateKeysHOME31(raw) {
+  const LIMIT = 5 * 1024 * 1024;
+  const MAX_DEPTH = 64;
+  const MAX_VALUES = 200000;
+  const reject = (code, detail = '') => {
+    throw Error(code + (detail ? ':' + String(detail).slice(0,160) : ''));
+  };
+  if (typeof raw !== 'string') reject('INVALID_RAW_TYPE');
+  if (new TextEncoder().encode(raw).byteLength > LIMIT)
+    reject('OVERSIZE_JSON');
+  let i = 0, values = 0;
+  function whitespace() {
+    while (i < raw.length && /[ \n\t\r]/.test(raw[i])) i++;
+  }
+  function str() {
+    if (raw[i] !== '"') reject('INVALID_JSON_STRING');
+    const start = i++;
+    let complete = false;
+    while (i < raw.length) {
+      const c = raw[i++];
+      if (c === '\\') { i++; continue; }
+      if (c === '"') { complete = true; break; }
+    }
+    if (!complete) reject('UNTERMINATED_JSON_STRING');
+    return JSON.parse(raw.slice(start, i));
+  }
+  function val(depth, path) {
+    if (++values > MAX_VALUES) reject('JSON_COMPLEXITY_LIMIT');
+    if (depth > MAX_DEPTH) reject('JSON_DEPTH_LIMIT');
+    whitespace();
+    if (raw[i] === '{') {
+      i++; whitespace(); const seen = new Set();
+      if (raw[i] === '}') { i++; return; }
+      for (;;) {
+        whitespace(); const k = str();
+        if (seen.has(k)) reject('DUPLICATE_JSON_KEY', path+'.'+k);
+        seen.add(k); whitespace();
+        if (raw[i++] !== ':') reject('INVALID_JSON_COLON');
+        val(depth+1, path+'.'+k); whitespace();
+        if (raw[i] === '}') { i++; return; }
+        if (raw[i++] !== ',') reject('INVALID_JSON_COMMA');
+      }
+    }
+    if (raw[i] === '[') {
+      i++; whitespace();
+      if (raw[i] === ']') { i++; return; }
+      let n = 0;
+      for (;;) {
+        val(depth+1, path+'['+(n++)+']'); whitespace();
+        if (raw[i] === ']') { i++; return; }
+        if (raw[i++] !== ',') reject('INVALID_ARRAY_COMMA');
+      }
+    }
+    if (raw[i] === '"') { str(); return; }
+    const start = i;
+    while (i < raw.length && !/[\s,}\]]/.test(raw[i])) i++;
+    if (i === start) reject('INVALID_JSON_VALUE');
+  }
+  whitespace(); val(0, '$'); whitespace();
+  if (i !== raw.length) reject('TRAILING_JSON_CONTENT');
+}
+
 function normalizedBackupData(version,data){
   if(!data||typeof data!=='object')throw Error('Отсутствует резервная копия');
   if(version<3)return {pressures:data.pressures,medications:data.medications,intakes:data.intakes,intakeEvents:[]};
@@ -1007,7 +1094,7 @@ async function onMedSubmit(e){
     showMessage('Препарат сохранён и повторно прочитан из локальной базы.');
   }catch(err){showMessage(toError(err),'error');}
 }
-async function exportBackup(){try{const backup=await createBackup();downloadFile(`PAE04-PERSONAL-BACKUP-${today()}.json`,new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));showMessage('Копия сформирована и передана браузеру на скачивание. Проверьте наличие файла в «Загрузках».')}catch(e){showMessage(toError(e),'error')}}
+async function exportBackup(){try{if(!confirm('Файл JSON содержит медицинские данные и не зашифрован. SHA-256 не скрывает содержимое. Сохраняйте файл в защищённом локальном месте, не в синхронизируемой облачной папке. Продолжить скачивание?'))return;const backup=await createBackup();downloadFile(`PAE04-PERSONAL-BACKUP-${today()}.json`,new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));showMessage('Копия сформирована и передана браузеру на скачивание. Проверьте наличие файла в «Загрузках».')}catch(e){showMessage(toError(e),'error')}}
 let backupVerifySequence=0;
 async function verifyDownloadedBackup(e){
   const sequence=++backupVerifySequence,view=$('verify-result');
@@ -1017,13 +1104,17 @@ async function verifyDownloadedBackup(e){
   safetyWrite('safety-copy-status','Проверяем выбранный JSON…','safety-warn');
   try{
     if(file.size>5*1024*1024)throw Error('Максимальный размер проверяемого JSON — 5 МБ');
-    const parsed=JSON.parse(await file.text());if(sequence!==backupVerifySequence)return;
+    const raw=await file.text();
+    if(sequence!==backupVerifySequence)return;
+    checkNoDuplicateKeysHOME31(raw);
+    const parsed=JSON.parse(raw);
     if(!parsed||parsed.format!==BACKUP_FORMAT||!validBackupVersion(parsed.version)||
       !validInstant(parsed.exportedAt)||!parsed.data||
       typeof parsed.sha256!=='string'||!/^[a-f0-9]{64}$/.test(parsed.sha256))throw Error('Неверный формат копии');
     const {sha256:expected,...body}=parsed;
     if(await sha256(body)!==expected)throw Error('SHA-256 не совпадает: файл изменён или повреждён');
     if(sequence!==backupVerifySequence)return;
+    assertKnownBackupFields(parsed);
     const normalized=normalizedBackupData(parsed.version,parsed.data);
     const total=validateBackupData(normalized,false);
     if(sequence!==backupVerifySequence)return;
@@ -1053,8 +1144,10 @@ async function previewImport(e){
   const view=$('import-preview');view.replaceChildren();const file=e.target.files?.[0];if(!file)return;
   try{
     if(file.size>5*1024*1024)throw Error('Максимальный размер копии — 5 МБ');
-    const parsed=JSON.parse(await file.text());
+    const raw=await file.text();
     if(sequence!==importPreviewSequence)return;
+    checkNoDuplicateKeysHOME31(raw);
+    const parsed=JSON.parse(raw);
     if(parsed.format!==BACKUP_FORMAT||!validBackupVersion(parsed.version)||!validInstant(parsed.exportedAt)||
       !parsed.data||typeof parsed.sha256!=='string'||!/^[a-f0-9]{64}$/.test(parsed.sha256))throw Error('Неверный формат');
     const {sha256:expected,...body}=parsed;
@@ -1062,6 +1155,7 @@ async function previewImport(e){
     if(sequence!==importPreviewSequence)return;
     await reload();
     if(sequence!==importPreviewSequence)return;
+    assertKnownBackupFields(parsed);
     const data=normalizedBackupData(parsed.version,parsed.data);
     validateBackupData(data);const plan=prepareMerge(data);
     view.append(node('div',null,`Проверка SHA-256 PASS · Новых: ${plan.fresh} · Совпадающих: ${plan.duplicate} · Конфликтов: ${plan.conflicts}`));
@@ -1078,6 +1172,11 @@ async function downloadImportCheckpoint(){
   $('checkpoint-ack').disabled=true;
   $('checkpoint-ack').checked=false;syncImportReady();
   try{
+    if(!confirm('Файл JSON содержит медицинские данные и не зашифрован. SHA-256 не скрывает содержимое. Сохраняйте файл в защищённом локальном месте, не в синхронизируемой облачной папке. Продолжить скачивание?')){
+      selected.checkpoint=null;
+      resetImportCheckpoint();$('checkpoint-button').disabled=false;
+      return;
+    }
     const backup=await createBackup();
     const baselineHash=await sha256(backup.data);
     if(pendingImport!==selected)return; // file selection changed during async read
