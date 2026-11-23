@@ -52,6 +52,9 @@ def run():
         check("preserve approved Compact v7.1", "Health Tracker · Compact v7.1" in html)
         html=html.replace("Личная бета.","Синтетический UI-preview.")
         html=html.replace("<head>","<head>\n<meta name=\"robots\" content=\"noindex,nofollow,noarchive\">",1)
+        notice='<div id="pae04-public-preview-warning" role="note" style="background:#fff0c8;color:#4b3316;border-bottom:1px solid #e5bf61;padding:10px 16px;font:600 14px/1.5 -apple-system,BlinkMacSystemFont,Arial,sans-serif">Синтетический UI-preview · CP40 iPhone v2.3. Только тестовые записи — не вводите реальные медицинские данные.</div>'
+        check("unique body injection",html.count("<body>"),1)
+        html=html.replace("<body>","<body>\n"+notice,1)
         index.write_text(html,encoding="utf-8")
         manifest=stage/"manifest.webmanifest"
         manifest.write_text(manifest.read_text(encoding="utf-8").replace(
@@ -127,7 +130,8 @@ def run():
                      (await Promise.all(['pressures','medications','intakes','intakeEvents']
                      .map(getAll))).map(rows=>rows.length)"""),[0,0,0,0])
                     check("synthetic warning visible",
-                        "Синтетический UI-preview" in page.locator("body").inner_text())
+                        page.locator("#pae04-public-preview-warning").is_visible() and
+                        "Только тестовые записи" in page.locator("#pae04-public-preview-warning").inner_text())
                     page.wait_for_function("""async()=> {
                       const r=await navigator.serviceWorker.getRegistration('./');
                       return !!r?.active && !!navigator.serviceWorker.controller;
