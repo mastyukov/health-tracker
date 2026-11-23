@@ -9,7 +9,7 @@ PINNED={
   "CP_MED05_BUILD.json": "73cae13ae3002afd9a139805e7152acfc1ad4762",
   "CP_REAL01_BUILD.json": "b7010ad22f5503f1e63148514f628765e6edd248",
   "CP_UI01_BUILD.json": "b92bd7c5e2720a663cf502ee2abfa9650a7e6dfa",
-  "app.js": "6f76cd6b464216fc1402857c33b1b5a4614b3838",
+  "app.js": "32a093dffddf254278c46a2a56f35128f45aeb6f",
   "home.css": "e49331b5da9c1632f1d4b384ac05bc57506f50f9",
   "home.js": "de4c28b60f6e90a54696b6232c9eb6c4147cea31",
   "icons/apple-touch-icon.png": "4cf9879b433979d1508c8ffdbb312e29123ef549",
