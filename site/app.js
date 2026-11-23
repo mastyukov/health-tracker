@@ -518,11 +518,55 @@ function isFutureIntake(t){return new Date(t).getTime()>Date.now()+60000;}
 function renderMedications(){
   const list=$('med-list'),day=$('intake-date').value||today();list.replaceChildren();
   const medQuery=($('med-search')?.value||'').trim().toLocaleLowerCase('ru');const meds=[...snapshot.medications].sort((a,b)=>a.name.localeCompare(b.name,'ru')).filter(m=>m.name.toLocaleLowerCase('ru').includes(medQuery));
+  // Approved Compact UX: presentation-only grouping on the current day.
+  // Never infer a dose or modify the schedule; count explicitly configured slots.
+  const scheduled=snapshot.medications.filter(m=>
+    m.kind!=='asNeeded' && (m.kind!=='course' ||
+      ((!m.from||day>=m.from)&&(!m.to||day<=m.to))));
+  let planned=0,marked=0;
+  for(const med of scheduled){
+    const goal=medDailyTarget(med);
+    if(goal===null)continue;
+    planned+=goal;
+    const active=snapshot.intakes.filter(i=>i.medId===med.id&&i.date===day&&intakeStatus(i)==='active');
+    marked+=medDailySlots(med,active).filter(Boolean).length;
+  }
+  const summary=node('div','ux23-meds-today-summary');
+  summary.append(node('h3','ux23-meds-today-title','Лекарства сегодня'),
+    node('strong','ux23-meds-today-count',marked+' / '+planned));
+  const progress=node('div','ux23-meds-today-progress');
+  progress.setAttribute('role','progressbar');
+  progress.setAttribute('aria-label','Отмеченные запланированные приёмы');
+  progress.setAttribute('aria-valuemin','0');
+  progress.setAttribute('aria-valuemax',String(planned));
+  progress.setAttribute('aria-valuenow',String(marked));
+  const fill=node('span','ux23-meds-today-fill');
+  fill.style.width=(planned?Math.round(marked/planned*100):0)+'%';
+  progress.append(fill);list.append(summary,progress);
+  const icons={
+    regular:'<path d="M6 16c5 0 7-8 12-8a4 4 0 0 1 0 8c-5 0-7-8-12-8a4 4 0 1 0 0 8"/>',
+    course:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01"/>',
+    asNeeded:'<path d="m13 2-3 8h7l-6 12 1-9H5l8-11Z"/>'
+  };
+  const labels={regular:'Постоянные',course:'Курсовые',asNeeded:'Ситуативные'};
+  const kindGroups={};
   if(!meds.length)list.append(node('p','empty',snapshot.medications.length?'По запросу препараты не найдены.':'Препараты ещё не добавлены.'));
+  for(const kind of ['regular','course','asNeeded']){
+    if(!meds.some(m=>m.kind===kind))continue;
+    const group=node('section','ux23-med-kind-group');
+    const heading=node('h3','ux23-med-kind-heading',labels[kind]);
+    const icon=node('span','ui01-kind-icon kind-'+kind);
+    icon.setAttribute('aria-hidden','true');
+    icon.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+icons[kind]+'</svg>';
+    heading.prepend(icon);group.append(heading);list.append(group);
+    kindGroups[kind]=group;
+  }
   for(const med of meds){
     const wrap=node('article','med-block'),row=node('div','med-row'),desc=node('div','med-details');
+    const advanced=node('details','ux23-med-advanced');
+    advanced.append(node('summary','ux23-med-advanced-title','Настройки и история'));
     const title=node('div','row-title',med.name);
-    title.prepend(node('span','med-pill','▱'));
+    // The approved category outline is already visible in the group heading.
     title.append(node('span','med-type',KINDS[med.kind]));
     let sub=medDescription(med);
     if(med.kind==='course')sub+=' · '+(med.from||'…')+' – '+(med.to||'…');
@@ -542,7 +586,7 @@ function renderMedications(){
       try{await changeMedDailyTarget(med,frequency.value===''?null:Number(frequency.value));await reload();showMessage('Кратность сохранена, прежние отметки не изменены.');}
       catch(e){await reload();showMessage(toError(e),'error')}
     });
-    frequencyLabel.hidden=med.kind==='asNeeded';frequencyLabel.append(frequency);desc.append(frequencyLabel);
+    frequencyLabel.hidden=med.kind==='asNeeded';frequencyLabel.append(frequency);advanced.append(frequencyLabel);
     row.append(desc);
     const controls=node('div','med-time-controls'),label=node('label','intake-time-label','Время нового приёма');
     const time=node('input','intake-time-input');time.type='time';time.step=60;
@@ -672,7 +716,8 @@ function renderMedications(){
       for(const event of audit)item.append(node('div','audit-event',eventLabel(event)));
       recList.append(item);
     }
-    wrap.append(recList);list.append(wrap);
+    advanced.append(recList);wrap.append(advanced);
+    (kindGroups[med.kind]||list).append(wrap);
   }
   const history=$('intake-list');history.replaceChildren();
   const ordered=[...snapshot.intakes].sort((a,b)=>b.date.localeCompare(a.date)||
