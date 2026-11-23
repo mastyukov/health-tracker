@@ -107,7 +107,7 @@ jobs:
              typeof assertKnownBackupFields==='function'&&
              typeof readBackupSnapshot==='function'""",timeout=20000)
             ck('HOME31 exact guard loaded',page.evaluate("typeof checkNoDuplicateKeysHOME31==='function'"))
-            ck('isolated synthetic DB id',page.evaluate("DB_NAME")==='PAE04_HT_STABLE_CANDIDATE_INTEGRATION_SYNTHETIC_SCHEMA1')
+            ck('isolated synthetic DB id',page.evaluate("DB_NAME")=='PAE04_HT_STABLE_CANDIDATE_INTEGRATION_SYNTHETIC_SCHEMA1')
             snapshot=lambda:page.evaluate("async()=>canonical(await readBackupSnapshot())")
             initial=page.evaluate("async()=>await readBackupSnapshot()")
             ck('four stores start empty',{k:len(v) for k,v in initial.items()}==
