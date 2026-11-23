@@ -1,0 +1,21 @@
+{
+  "project": "PAE-04 HEALTH TRACKER",
+  "mode": "PUBLIC_SYNTHETIC_UI_PREVIEW_ONLY",
+  "sourceCommit": "5f943055b12628eab316c201f6955fef99c0335f",
+  "sourceTree": "f80b003848a7cd9209e7f9262b614c3773528a1c",
+  "sourceAssetCount": 20,
+  "excludedOriginalPaths": [
+    "site/personal_profile.json",
+    "site/personal_adapter.js"
+  ],
+  "fixturePaths": [
+    "personal_profile.json",
+    "personal_adapter.js"
+  ],
+  "serviceWorkerRegistration": "DISABLED_FOR_THIRD_PARTY_UI_PREVIEW",
+  "previewBranch": "sandbox/pae04-cp39r-ui-preview-20261123",
+  "ownerApproval": "2026-11-23 temporary synthetic UI-preview",
+  "siteMainModified": false,
+  "testRepoModified": false,
+  "note": "UI-only. No real data. Browser Safari acceptance NOT RUN."
+}
