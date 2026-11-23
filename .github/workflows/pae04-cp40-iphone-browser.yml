@@ -1,0 +1,53 @@
+name: PAE-04 CP40 approved iPhone UX v2.3 — targeted synthetic Chromium QA
+on:
+  push:
+    branches:
+      - sandbox/pae04-approved-ux23-iphone-cp40-20261123-r1
+    paths:
+      - qa/cp40/iphone_browser_smoke.py
+      - .github/workflows/pae04-cp40-iphone-browser.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pae04-cp40-synthetic-iphone-browser
+  cancel-in-progress: false
+
+jobs:
+  targeted-iphone:
+    if: github.repository == 'mastyukov/health-tracker' && github.ref == 'refs/heads/sandbox/pae04-approved-ux23-iphone-cp40-20261123-r1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      PAE04_SYNTHETIC_ONLY: 'true'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout exact existing sandbox candidate (no production)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install only Python Playwright for system Chrome
+        run: python -m pip install --quiet --disable-pip-version-check 'playwright==1.65.1'
+      - name: Check system Chromium/Chrome and source pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$PAE04_SYNTHETIC_ONLY" = "true"
+          test "$GITHUB_REF" = "refs/heads/sandbox/pae04-approved-ux23-iphone-cp40-20261123-r1"
+          command -v google-chrome
+          python -m py_compile qa/cp40/iphone_browser_smoke.py
+      - name: Targeted real browser QA for approved iPhone UI (synthetic memory)
+        run: python qa/cp40/iphone_browser_smoke.py
+      - name: Save synthetic-only evidence; never deploy
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pae04-cp40-iphone-chromium-synthetic-evidence
+          path: qa/cp40/results/*
+          if-no-files-found: warn
+          retention-days: 3
