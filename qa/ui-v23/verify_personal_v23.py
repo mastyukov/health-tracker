@@ -9,7 +9,7 @@ PINNED={
   "CP_MED05_BUILD.json": "73cae13ae3002afd9a139805e7152acfc1ad4762",
   "CP_REAL01_BUILD.json": "b7010ad22f5503f1e63148514f628765e6edd248",
   "CP_UI01_BUILD.json": "b92bd7c5e2720a663cf502ee2abfa9650a7e6dfa",
-  "app.js": "32a093dffddf254278c46a2a56f35128f45aeb6f",
+  "app.js": "1925c9a8207f6e81d3cccc1a2ed51764e7ff5a77",
   "home.css": "e49331b5da9c1632f1d4b384ac05bc57506f50f9",
   "home.js": "de4c28b60f6e90a54696b6232c9eb6c4147cea31",
   "icons/apple-touch-icon.png": "4cf9879b433979d1508c8ffdbb312e29123ef549",
@@ -21,12 +21,12 @@ PINNED={
   "med_guard.css": "1ebdff67c6ae4088759bc1c9059ee7f2f5fd6b2e",
   "med_guard.mjs": "9435ec752a887f0e6e5b696be6eaefc7d6999704",
   "med_matcher.mjs": "cf08822f5e71c8fb505fbec066e5eec9145215c6",
-  "offline_status.js": "862ae34631464e86443139675557485b9dc2398e",
+  "offline_status.js": "4cf6f52f65b457670ee2bb2ae0c3d81c04d4f3d7",
   "personal_adapter.js": "277b8bc2435d4bd9f4b30c89db15570ca2f2656f",
   "personal_profile.json": "5b21b52962b8ff2ebc48e5a394ef3cd308d50b4c",
   "robots.txt": "1f53798bb4fe33c86020be7f10c44f29486fd190",
   "styles.css": "33fc30b7c85f7cdbf60f43a206fb1f47a9c72fb4",
-  "sw.js": "21f4cf493b0efaba84e8c74244047ffee445a8e7"
+  "sw.js": "0c917e5bebc9db580e7ed3385a18cad576911628"
 }
 assert site.is_dir(),'SITE_MISSING'
 assert not any(f.is_symlink() for f in site.rglob('*')),'SYMLINK_IN_SITE'
@@ -53,7 +53,7 @@ assert "const BACKUP_FORMAT='pae04.healthtracker.synthetic-backup'" in app,'BACK
 assert 'navigator.onLine' not in app and 'Локальная база доступна' in app,'LOCAL_DB_BADGE_REGRESSION'
 assert 'TEST: импорт резервных копий отключён' not in app,'IMPORT_TEST_DISABLE'
 assert 'indexedDB.deleteDatabase' not in app,'UNAPPROVED_DB_DELETE'
-assert 'personal-home-v71-home32-cachefix-20261124' in sw and 'personal-home-v71-home32-cachefix-20261124' in offline,'CACHE_VERSION_MISMATCH'
+assert 'personal-home-v71-home33-cachefix-20261124' in sw and 'personal-home-v71-home33-cachefix-20261124' in offline,'CACHE_VERSION_MISMATCH'
 assert "'./personal_adapter.js'" in sw and "'./personal_profile.json'" in sw,'PERSONAL_ASSETS_NOT_PRECACHED'
 assert 'indexedDB.open' not in sw and 'indexedDB.open' not in offline,'SW_TOUCHES_USER_DATA'
 assert manifest['id']=='./' and manifest['scope']=='./' and manifest['start_url']=='./index.html' and manifest['display']=='standalone','PWA_ID_CHANGED'

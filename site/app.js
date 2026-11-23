@@ -1094,7 +1094,7 @@ async function onMedSubmit(e){
     showMessage('Препарат сохранён и повторно прочитан из локальной базы.');
   }catch(err){showMessage(toError(err),'error');}
 }
-async function exportBackup(){try{const backup=await createBackup();downloadFile(`PAE04-PERSONAL-BACKUP-${today()}.json`,new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));showMessage('Копия сформирована и передана браузеру на скачивание. Проверьте наличие файла в «Загрузках».')}catch(e){showMessage(toError(e),'error')}}
+async function exportBackup(){try{if(!confirm('Файл JSON содержит медицинские данные и не зашифрован. SHA-256 не скрывает содержимое. Сохраняйте файл в защищённом локальном месте, не в синхронизируемой облачной папке. Продолжить скачивание?'))return;const backup=await createBackup();downloadFile(`PAE04-PERSONAL-BACKUP-${today()}.json`,new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));showMessage('Копия сформирована и передана браузеру на скачивание. Проверьте наличие файла в «Загрузках».')}catch(e){showMessage(toError(e),'error')}}
 let backupVerifySequence=0;
 async function verifyDownloadedBackup(e){
   const sequence=++backupVerifySequence,view=$('verify-result');
@@ -1172,6 +1172,11 @@ async function downloadImportCheckpoint(){
   $('checkpoint-ack').disabled=true;
   $('checkpoint-ack').checked=false;syncImportReady();
   try{
+    if(!confirm('Файл JSON содержит медицинские данные и не зашифрован. SHA-256 не скрывает содержимое. Сохраняйте файл в защищённом локальном месте, не в синхронизируемой облачной папке. Продолжить скачивание?')){
+      selected.checkpoint=null;
+      resetImportCheckpoint();$('checkpoint-button').disabled=false;
+      return;
+    }
     const backup=await createBackup();
     const baselineHash=await sha256(backup.data);
     if(pendingImport!==selected)return; // file selection changed during async read

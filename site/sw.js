@@ -1,7 +1,7 @@
 'use strict';
 /* PAE-04 CP-OFFLINE01: immutable app shell. Never accesses IndexedDB. */
 const CACHE_PREFIX='pae04-ht-stable-candidate-synthetic-schema1-cache-';
-const CACHE=CACHE_PREFIX+'personal-home-v71-home32-cachefix-20261124';
+const CACHE=CACHE_PREFIX+'personal-home-v71-home33-cachefix-20261124';
 const SHELL=new URL('./index.html',self.registration.scope).href;
 const FILES=[
   './','./index.html','./app.js','./styles.css','./home.js','./home.css',
