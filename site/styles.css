@@ -327,3 +327,31 @@ html[data-appearance="dark"] .v232-med-pane .intake-record{background:#1b2634;bo
  html:not([data-appearance]) .v232-pressure-stat-number{color:#e8f3ff}
  html:not([data-appearance]) .v232-med-pane .intake-record{background:#1b2634;border-color:#324155}
 }
+
+/* CP40 iPhone approved UX v2.3 visual correction, no DB/backup changes. */
+:root{--ux23-blue:#5486B9;--ux23-green:#59A48C;--ux23-red:#DF5263;--ux23-permanent:#279B80;--ux23-course:#8977C7;--ux23-prn:#C99535;}
+#page-pressure #pressure-chart{display:flex;flex-direction:column;justify-content:flex-start;gap:8px;min-height:0;height:auto}
+#page-pressure #pressure-chart svg{width:100%;height:auto;min-height:0!important;max-height:300px;aspect-ratio:720/252;flex:none;display:block;margin:0}
+#page-pressure .pressure-chart-panel{min-height:0;height:auto;align-self:start}
+#page-pressure .pressure-chart-panel .pressure-legend{margin-top:0;gap:8px 12px}
+#page-pressure .ux23-chart-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:6px 0 4px}
+#page-pressure .ux23-chart-metric{display:flex;flex-direction:column;gap:4px;padding:11px 9px;background:#edf2f8;border-radius:12px;min-width:0}
+#page-pressure .ux23-chart-metric-label{font-size:12px;color:#516881;line-height:1.2}
+#page-pressure .ux23-chart-metric-value{font-size:clamp(18px,4.7vw,23px);line-height:1.2;font-variant-numeric:tabular-nums;color:#182536}
+#page-pressure .ux23-chart-metric:nth-child(1){border-top:3px solid var(--ux23-blue)}
+#page-pressure .ux23-chart-metric:nth-child(2){border-top:3px solid var(--ux23-green)}
+#page-pressure .ux23-chart-metric:nth-child(3){border-top:3px solid var(--ux23-red)}
+.ui01-kind-icon svg,.ux23-pulse-icon svg{display:block;width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ui01-kind-icon.kind-regular{color:var(--ux23-permanent)}
+.ui01-kind-icon.kind-course{color:var(--ux23-course)}
+.ui01-kind-icon.kind-asNeeded{color:var(--ux23-prn)}
+.ux23-pulse-icon{display:inline-flex;align-items:center;margin-right:6px;color:var(--ux23-red)}
+#page-meds .v232-kind-button .ui01-kind-icon{display:inline-flex;margin:0 6px 0 0;width:20px;height:20px;vertical-align:middle}
+#page-meds .v232-kind-button .ui01-kind-icon svg{width:19px;height:19px}
+#page-meds .v232-kind-button{display:flex;align-items:center;justify-content:center;gap:3px;white-space:nowrap;font-size:12px}
+.ui01-home .ui01-med-row{padding-block:9px}
+.ui01-home .ui01-med-group{margin-bottom:10px}
+@media(max-width:480px){#page-pressure #pressure-chart svg{max-height:220px}#page-pressure .ux23-chart-metric{padding:9px 7px}}
+html[data-appearance="dark"] #page-pressure .ux23-chart-metric{background:#263548}
+html[data-appearance="dark"] #page-pressure .ux23-chart-metric-value{color:#e8eef6}
+@media(prefers-color-scheme:dark){html:not([data-appearance]) #page-pressure .ux23-chart-metric{background:#263548}html:not([data-appearance]) #page-pressure .ux23-chart-metric-value{color:#e8eef6}}

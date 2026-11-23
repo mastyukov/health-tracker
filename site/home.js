@@ -83,26 +83,32 @@
           count:todayRows.length}:null};
     }
     if(yesterday.length){
-      return {source:'yesterday',latest:{systolic:mean(yesterday,'systolic'),
-        diastolic:mean(yesterday,'diastolic'),pulse:mean(yesterday,'pulse')},
-        label:yesterday.length===1?'Вчера · один замер':
-          'Вчера · среднее за '+yesterday.length+' замера',
-        average:null};
+      // UX v2.3: last actual reading, not an inferred previous-day mean.
+      const lastYesterday=yesterday[yesterday.length-1];
+      return {source:'yesterday',latest:lastYesterday,
+        label:'Вчера · '+lastYesterday.dateTime.slice(11,16),average:null};
     }
     const last=rows[rows.length-1];
     return {source:last?'older':'empty',latest:last||null,
       label:last?'Последний замер · '+humanDate(last.dateTime.slice(0,10))+' · '+last.dateTime.slice(11,16):
         'Измерений пока нет',average:null};
   }
+  // Approved UX v2.3: consistent outline icons, not Unicode substitutes.
+  function ux23OutlineIcon(kind){
+    const paths={"regular":"<path d=\"M6 16c5 0 7-8 12-8a4 4 0 0 1 0 8c-5 0-7-8-12-8a4 4 0 1 0 0 8\"/>","course":"<rect x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"2\"/><path d=\"M16 3v4M8 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01\"/>","asNeeded":"<path d=\"m13 2-3 8h7l-6 12 1-9H5l8-11Z\"/>","activity":"<path d=\"M2 12h4l3-7 4 14 3-7h6\"/>"};
+    if(!Object.prototype.hasOwnProperty.call(paths,kind))return null;
+    const icon=element('span',kind==='activity'?'ux23-pulse-icon':'ui01-kind-icon kind-'+kind);
+    icon.setAttribute('aria-hidden','true');
+    icon.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+paths[kind]+'</svg>';
+    return icon;
+  }
   function drawPressure(day){
     const holder=el('ui01-pressure');if(!holder)return;
     holder.replaceChildren();
     const title=element('h2','ui01-card-title ui01-v7-pressure-title','Давление');
-    const heart=element('span','ui01-v7-heart','♥');
-    heart.setAttribute('aria-hidden','true');
     const icon=element('span','ui01-tonometer-icon');
-    icon.innerHTML='<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="11" y="5" width="34" height="46" rx="7"/><rect x="17" y="12" width="22" height="17" rx="2"/><path d="M20 22h4l3-5 4 9 3-4h3"/><circle cx="28" cy="40" r="3"/><path d="M45 37c13-2 17 2 13 10l-3 5"/><rect x="43" y="51" width="17" height="8" rx="3"/></svg>';
-    title.prepend(heart,icon);holder.append(title);
+    icon.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="#5486B9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="9" width="33" height="43" rx="7"/><rect x="12" y="15" width="23" height="19" rx="3"/><path d="M17 22h12M17 27h8"/><circle cx="24" cy="43" r="3"/><path d="M40 43c11-2 7 10 14 9"/><rect x="49" y="39" width="12" height="20" rx="4"/></svg>';
+    title.prepend(icon);holder.append(title);
     // Retire separate average card: v7 shows the mean beside today's last reading.
     const oldMean=el('ui01-pressure-average');
     if(oldMean){oldMean.replaceChildren();oldMean.hidden=true;}
@@ -114,7 +120,8 @@
         view.latest.systolic+' / '+view.latest.diastolic));
       left.append(element('span','ui01-v7-reading-meta',view.label));
       if(Number.isFinite(view.latest.pulse)){
-        const pulse=element('span','ui01-v7-pulse','♥ 〰 Пульс '+view.latest.pulse);
+        const pulse=element('span','ui01-v7-pulse','Пульс '+view.latest.pulse);
+        pulse.prepend(ux23OutlineIcon('activity'));
         pulse.setAttribute('aria-label','Пульс '+view.latest.pulse+' ударов в минуту');
         left.append(pulse);
       }else left.append(element('span','ui01-v7-reading-meta','Пульс не указан'));
@@ -279,8 +286,7 @@
       const rows=plan.groups[kind];if(!rows.length)continue;visible++;
       const card=element('section','ui01-card ui01-med-group');
       const heading=element('h3','ui01-group-title',TYPE_NAMES[kind]);
-      const glyph={regular:'∞',course:'▦',asNeeded:'ϟ'}[kind];
-      heading.prepend(element('span','ui01-kind-icon kind-'+kind,glyph));
+      heading.prepend(ux23OutlineIcon(kind));
       card.append(heading);
       const pending=rows.filter(r=>!r.fullyDone),finished=rows.filter(r=>r.fullyDone);
       for(const row of pending)card.append(medRow(row.med,day));
@@ -378,12 +384,13 @@
     tabs.querySelector('[data-med-view="today"]').click();
     const kindTabs=element('div','v232-med-kind-tabs');
     kindTabs.setAttribute('role','group');kindTabs.setAttribute('aria-label','Категория истории');
-    const options=[['regular','∞ Постоянные'],['course','▦ Курсовые'],['asNeeded','ϟ Ситуативные']];
+    const options=[['regular','Постоянные'],['course','Курсовые'],['asNeeded','Ситуативные']];
     const sync=()=>kindTabs.querySelectorAll('button').forEach(button=>{
       button.setAttribute('aria-pressed',String(button.dataset.kind===kind.value));
     });
     for(const [value,title] of options){
-      const button=element('button','v232-kind-button',title);button.type='button';button.dataset.kind=value;
+      const button=element('button','v232-kind-button');button.type='button';button.dataset.kind=value;
+      button.append(ux23OutlineIcon(value),document.createTextNode(title));
       button.addEventListener('click',()=>{kind.value=value;kind.dispatchEvent(new Event('change',{bubbles:true}));sync();});
       kindTabs.append(button);
     }

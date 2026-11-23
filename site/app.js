@@ -397,26 +397,47 @@ function renderPressureChart(){
   const instants=rows.map(p=>new Date(p.dateTime).getTime());
  const minTime=instants[0],maxTime=instants[n-1];
  const x=i=>n===1||maxTime===minTime?(left+right)/2:left+(right-left)*(instants[i]-minTime)/(maxTime-minTime);
-  const yBP=v=>bottom-(Math.max(40,Math.min(240,v))-40)/200*(bottom-top);
-  const yPulse=v=>pulseBottom-(Math.max(25,Math.min(250,v))-25)/225*(pulseBottom-pulseTop);
-  const detail=node('p','pressure-point-detail','Нажмите на точку, чтобы увидеть значения и время.');detail.id='pressure-chart-detail';
-  const showPoint=(p)=>{detail.textContent=`${dateLabel(p.dateTime)} · ${p.systolic}/${p.diastolic} мм рт. ст. · Пульс ${p.pulse===null?'не указан':p.pulse+' уд/мин'}`;};
-  const point=(cx,cy,color,p,label)=>{const c=add('circle',{cx,cy,r:4,fill:color,tabindex:0,role:'button'});const text=`${label}: ${dateLabel(p.dateTime)}; ${p.systolic}/${p.diastolic}; пульс ${p.pulse===null?'не указан':p.pulse}`;c.setAttribute('aria-label',text);const title=document.createElementNS(ns,'title');title.textContent=text;c.append(title);c.addEventListener('click',()=>showPoint(p));c.addEventListener('focus',()=>showPoint(p));c.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showPoint(p);}});};
-  for(const value of [220,160,100,40]){const y=yBP(value);add('line',{x1:left,y1:y,x2:right,y2:y,stroke:'#e6ebf2','stroke-width':1});const t=add('text',{x:left-7,y:y+4,fill:'#758296','font-size':11,'text-anchor':'end'});t.textContent=String(value);}
+  // Scale values to the observed range without treating absent pulse as zero.
+  const bpVals=rows.flatMap(p=>[p.systolic,p.diastolic]);
+  const bpMin=Math.floor((Math.min(...bpVals)-15)/10)*10;
+  const bpMax=Math.max(bpMin+40,Math.ceil((Math.max(...bpVals)+15)/10)*10);
+  const pulseVals=rows.map(p=>p.pulse).filter(Number.isFinite);
+  const pulseMin=pulseVals.length?Math.floor((Math.min(...pulseVals)-10)/10)*10:40;
+  const pulseMax=pulseVals.length?Math.max(pulseMin+30,Math.ceil((Math.max(...pulseVals)+10)/10)*10):100;
+  const yBP=v=>bottom-(v-bpMin)/(bpMax-bpMin)*(bottom-top);
+  const yPulse=v=>pulseBottom-(v-pulseMin)/(pulseMax-pulseMin)*(pulseBottom-pulseTop);
+  const detail=node('p','pressure-point-detail');detail.id='pressure-chart-detail';
+  detail.setAttribute('aria-live','polite');
+  const metrics=node('div','ux23-chart-metrics'),values={};
+  for(const [key,title] of [['systolic','Верхнее'],['diastolic','Нижнее'],['pulse','Пульс']]){
+    const tile=node('div','ux23-chart-metric');
+    const label=node('span','ux23-chart-metric-label',title);
+    const value=node('strong','ux23-chart-metric-value');
+    tile.append(label,value);metrics.append(tile);values[key]=value;
+  }
+  const showPoint=(p)=>{
+    values.systolic.textContent=String(p.systolic);
+    values.diastolic.textContent=String(p.diastolic);
+    values.pulse.textContent=Number.isFinite(p.pulse)?String(p.pulse):'—';
+    detail.textContent=`${dateLabel(p.dateTime)} · ${p.systolic}/${p.diastolic} мм рт. ст. · Пульс ${p.pulse===null?'не указан':p.pulse+' уд/мин'}`;
+  };
+  showPoint(rows[rows.length-1]);
+  const point=(cx,cy,color,p,label)=>{const c=add('circle',{cx,cy,r:5,fill:color,tabindex:0,role:'button'});const text=`${label}: ${dateLabel(p.dateTime)}; ${p.systolic}/${p.diastolic}; пульс ${p.pulse===null?'не указан':p.pulse}`;c.setAttribute('aria-label',text);const title=document.createElementNS(ns,'title');title.textContent=text;c.append(title);c.addEventListener('click',()=>showPoint(p));c.addEventListener('focus',()=>showPoint(p));c.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showPoint(p);}});};
+  for(const value of Array.from({length:5},(_,i)=>bpMin+(bpMax-bpMin)*i/4)){const y=yBP(value);add('line',{x1:left,y1:y,x2:right,y2:y,stroke:'#e6ebf2','stroke-width':1});const t=add('text',{x:left-7,y:y+4,fill:'#758296','font-size':11,'text-anchor':'end'});t.textContent=String(Math.round(value));}
   add('line',{x1:left,y1:172,x2:right,y2:172,stroke:'#cbd4e1','stroke-width':1});
-  for(const value of [225,125,25]){const y=yPulse(value);const t=add('text',{x:left-7,y:y+4,fill:'#c34b55','font-size':10,'text-anchor':'end'});t.textContent=String(value);}
+  for(const value of Array.from({length:3},(_,i)=>pulseMin+(pulseMax-pulseMin)*i/2)){const y=yPulse(value);const t=add('text',{x:left-7,y:y+4,fill:'#c34b55','font-size':10,'text-anchor':'end'});t.textContent=String(Math.round(value));}
   const path=(key,color)=>{const pts=rows.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${yBP(p[key]).toFixed(1)}`).join(' ');add('path',{d:pts,fill:'none',stroke:color,'stroke-width':3,'stroke-linecap':'round','stroke-linejoin':'round'});rows.forEach((p,i)=>point(x(i),yBP(p[key]),color,p,key==='systolic'?'Верхнее давление':'Нижнее давление'));};
-  path('systolic','#3478d4');path('diastolic','#36a271');
+  path('systolic','#5486B9');path('diastolic','#59A48C');
   let pulsePath='';let pulseOpen=false;
   rows.forEach((p,i)=>{if(Number.isFinite(p.pulse)){pulsePath+=`${pulseOpen?'L':'M'}${x(i).toFixed(1)},${yPulse(p.pulse).toFixed(1)} `;pulseOpen=true;}else pulseOpen=false;});
-  if(pulsePath)add('path',{d:pulsePath.trim(),fill:'none',stroke:'#dc5a62','stroke-width':2.5,'stroke-linecap':'round','stroke-linejoin':'round'});
-  rows.forEach((p,i)=>{if(Number.isFinite(p.pulse))point(x(i),yPulse(p.pulse),'#dc5a62',p,'Пульс');});
+  if(pulsePath)add('path',{d:pulsePath.trim(),fill:'none',stroke:'#DF5263','stroke-width':2.5,'stroke-linecap':'round','stroke-linejoin':'round'});
+  rows.forEach((p,i)=>{if(Number.isFinite(p.pulse))point(x(i),yPulse(p.pulse),'#DF5263',p,'Пульс');});
   const first=new Intl.DateTimeFormat('ru-RU',{day:'2-digit',month:'short'}).format(new Date(rows[0].dateTime));
   const last=new Intl.DateTimeFormat('ru-RU',{day:'2-digit',month:'short'}).format(new Date(rows[rows.length-1].dateTime));
   const t1=add('text',{x:left,y:248,fill:'#758296','font-size':12});t1.textContent=first;
   const t2=add('text',{x:right,y:248,fill:'#758296','font-size':12,'text-anchor':'end'});t2.textContent=last;
-  host.append(svg);
-  const legend=node('div','pressure-legend');for(const [c,l]of [['#3478d4','Верхнее, мм рт. ст.'],['#36a271','Нижнее, мм рт. ст.'],['#dc5a62','Пульс, уд/мин · отдельная шкала']]){const item=node('span','pressure-legend-item');item.append(node('i','pressure-legend-dot'));item.querySelector('i').style.backgroundColor=c;item.append(document.createTextNode(l));legend.append(item);}host.append(legend);
+  host.append(metrics,svg);
+  const legend=node('div','pressure-legend');for(const [c,l]of [['#5486B9','Верхнее, мм рт. ст.'],['#59A48C','Нижнее, мм рт. ст.'],['#DF5263','Пульс, уд/мин · отдельная шкала']]){const item=node('span','pressure-legend-item');item.append(node('i','pressure-legend-dot'));item.querySelector('i').style.backgroundColor=c;item.append(document.createTextNode(l));legend.append(item);}host.append(legend);
   host.append(detail,node('p','form-hint',`${rows.length} измерений · пропуски пульса не соединяются нулевыми значениями.`));
 }
 
@@ -430,7 +451,7 @@ function renderPressureSummary(){
   if(title==='Последний замер'){
    const icon=node('span','ui01-tonometer-icon');
    icon.setAttribute('aria-hidden','true');
-   icon.innerHTML='<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="11" y="5" width="34" height="46" rx="7"/><rect x="17" y="12" width="22" height="17" rx="2"/><path d="M20 22h4l3-5 4 9 3-4h3"/><circle cx="28" cy="40" r="3"/><path d="M45 37c13-2 17 2 13 10l-3 5"/><rect x="43" y="51" width="17" height="8" rx="3"/></svg>';
+   icon.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="#5486B9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="9" width="33" height="43" rx="7"/><rect x="12" y="15" width="23" height="19" rx="3"/><path d="M17 22h12M17 27h8"/><circle cx="24" cy="43" r="3"/><path d="M40 43c11-2 7 10 14 9"/><rect x="49" y="39" width="12" height="20" rx="4"/></svg>';
    heading.prepend(icon);
   }
   panel.append(heading,
@@ -668,10 +689,11 @@ function renderMedications(){
 
 function renderMedicationHistory(){
   const historyKindIcon=kind=>{
-    const glyph={regular:'∞',course:'▦',asNeeded:'ϟ'}[kind];
-    if(!glyph)return null;
-    const icon=node('span',`ui01-kind-icon kind-${kind}`,glyph);
+    const paths={"regular":"<path d=\"M6 16c5 0 7-8 12-8a4 4 0 0 1 0 8c-5 0-7-8-12-8a4 4 0 1 0 0 8\"/>","course":"<rect x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"2\"/><path d=\"M16 3v4M8 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01\"/>","asNeeded":"<path d=\"m13 2-3 8h7l-6 12 1-9H5l8-11Z\"/>"};
+    if(!Object.prototype.hasOwnProperty.call(paths,kind))return null;
+    const icon=node('span',`ui01-kind-icon kind-${kind}`);
     icon.setAttribute('aria-hidden','true');
+    icon.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+paths[kind]+'</svg>';
     return icon;
   };
   const host=$('intake-list');if(!host)return;host.replaceChildren();
@@ -711,7 +733,7 @@ function renderMedicationHistory(){
     const withinYear=m=>m.to>=yearStart&&m.from<=yearEnd;
     const current=dated.filter(withinYear).sort((a,b)=>b.from.localeCompare(a.from));
     const previous=dated.filter(m=>!withinYear(m)).sort((a,b)=>b.from.localeCompare(a.from));
-    host.append(node('p','form-hint','Курсовые · 1 год (12 календарных месяцев). Каждый курс с датами отображается даже без отметок. Отсутствие отметки не считается пропуском.'));
+    host.append(node('p','form-hint','Последние 12 месяцев · 1 год. Каждый курс с датами отображается даже без отметок. Отсутствие отметки не считается пропуском.'));
     const group=(title,meds,uncertain=false)=>{
       if(!meds.length)return;
       host.append(node('h4','history-group-heading',title));
