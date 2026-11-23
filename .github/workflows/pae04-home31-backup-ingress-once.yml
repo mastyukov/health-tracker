@@ -1,0 +1,226 @@
+name: PAE04 HOME31 isolated one-shot backup ingress Chromium QA
+on:
+  push:
+    branches:
+      - pilot/pae04-cp39r-v71-backup-guard-20261122
+    paths:
+      - '.github/workflows/pae04-home31-backup-ingress-once.yml'
+permissions:
+  contents: read
+jobs:
+  scoped:
+    if: github.repository == 'mastyukov/health-tracker' && github.ref == 'refs/heads/pilot/pae04-cp39r-v71-backup-guard-20261122'
+    runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright/python:v1.65.1-noble
+    timeout-minutes: 12
+    env:
+      HOME31_SOURCE_SHA: c3062d2696e602a124fa5992a046bff6606824bf
+      PAE04_SYNTHETIC_ONLY: 'true'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+    steps:
+      - name: Fetch only SHA-pinned nonpersonal site files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "mastyukov/health-tracker"
+          test "$GITHUB_REF" = "refs/heads/pilot/pae04-cp39r-v71-backup-guard-20261122"
+          python - <<'PY'
+          import hashlib, os, pathlib, urllib.request
+          sha=os.environ['HOME31_SOURCE_SHA']
+          root=pathlib.Path('/tmp/pae04-home31-synthetic-site')
+          root.mkdir(parents=True,exist_ok=False)
+          pins={
+           'app.js':'32a093dffddf254278c46a2a56f35128f45aeb6f',
+           'index.html':'08b241a615da56297d4982a7ac5a2c36f0c8c0ca',
+           'styles.css':'33fc30b7c85f7cdbf60f43a206fb1f47a9c72fb4',
+           'home.css':'e49331b5da9c1632f1d4b384ac05bc57506f50f9',
+           'home.js':'de4c28b60f6e90a54696b6232c9eb6c4147cea31',
+           'med_guard.mjs':'9435ec752a887f0e6e5b696be6eaefc7d6999704',
+           'med_matcher.mjs':'cf08822f5e71c8fb505fbec066e5eec9145215c6',
+           'med_guard.css':'1ebdff67c6ae4088759bc1c9059ee7f2f5fd6b2e',
+           'offline_status.js':'d287ba87f900dd43c9b83ab463d21fa9aca13d7e',
+           'manifest.webmanifest':'e74f10f038d5a4e1c04936c1246435de58282d35',
+           'robots.txt':'1f53798bb4fe33c86020be7f10c44f29486fd190',
+           'sw.js':'b1c1ce828ff7c552088b4e395f3fea7e05e9c7b0',
+           'icons/icon.svg':'05b76763ede5f0d88e2b855f3d90ed72ddf64842',
+           'icons/apple-touch-icon.png':'4cf9879b433979d1508c8ffdbb312e29123ef549',
+           'icons/icon-192.png':'c07d28a59f0d773c2e18af62b261b50389f60a94',
+           'icons/icon-512.png':'09673205f1b64d689d8899c1096031ba351f34cc',
+          }
+          assert len(pins)==16
+          assert 'personal_adapter.js' not in pins and 'personal_profile.json' not in pins
+          for name,expected in sorted(pins.items()):
+           url=f'https://raw.githubusercontent.com/mastyukov/health-tracker/{sha}/site/{name}'
+           req=urllib.request.Request(url,headers={'User-Agent':'PAE04-HOME31-synthetic-only'})
+           with urllib.request.urlopen(req,timeout=30) as reply:
+            body=reply.read(4*1024*1024)
+           blob=hashlib.sha1(b'blob '+str(len(body)).encode()+b'\0'+body).hexdigest()
+           if blob!=expected: raise SystemExit('STOP_FIRST SOURCE_BLOB_MISMATCH '+name)
+           path=root/name
+           path.parent.mkdir(parents=True,exist_ok=True)
+           path.write_bytes(body)
+          (root/'personal_adapter.js').write_text("'use strict';\n// HOME31 only: synthetic no-op.\n",encoding='utf-8')
+          (root/'personal_profile.json').write_text('{"medicines":[]}\n',encoding='utf-8')
+          assert (root/'app.js').is_file() and all((root/p).is_file() for p in pins)
+          print('HOME31_SOURCE_SCOPE_PASS: 16/16 pinned nonpersonal Git blobs; 2 synthetic stubs')
+          PY
+      - name: One scoped synthetic Chromium file-picker QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --no-cache-dir 'playwright==1.65.1'
+          python - <<'PY'
+          import copy, functools, http.server, json, pathlib, sys, threading, traceback, urllib.parse
+          from playwright.sync_api import sync_playwright
+          SITE=pathlib.Path('/tmp/pae04-home31-synthetic-site')
+          REPORT=pathlib.Path('/tmp/pae04-home31-report.json')
+          checks=[]; errors=[]; js_errors=[]; external=[]; downloads=[]
+          def ck(name,ok):
+           checks.append({'name':name,'status':'PASS' if ok else 'FAIL'})
+           if not ok: raise AssertionError(name)
+          class Quiet(http.server.SimpleHTTPRequestHandler):
+           def log_message(self,*args):pass
+          server=None; browser=None
+          try:
+           assert (SITE/'app.js').is_file() and (SITE/'index.html').is_file()
+           server=http.server.ThreadingHTTPServer(('127.0.0.1',0),functools.partial(Quiet,directory=str(SITE)))
+           threading.Thread(target=server.serve_forever,daemon=True).start()
+           with sync_playwright() as pw:
+            browser=pw.chromium.launch(headless=True)
+            context=browser.new_context(viewport={'width':390,'height':844},device_scale_factor=2,
+             is_mobile=True,has_touch=True,locale='ru-RU',service_workers='block',accept_downloads=True)
+            page=context.new_page()
+            page.on('pageerror',lambda e:js_errors.append(str(e)[:160]))
+            page.on('download',lambda d:downloads.append(d.suggested_filename))
+            def network_guard(route):
+             host=urllib.parse.urlsplit(route.request.url).hostname
+             if host not in ('127.0.0.1','localhost'):
+              external.append(str(host)[:120]); route.abort()
+             else: route.continue_()
+            context.route('**/*',network_guard)
+            page.goto(f'http://127.0.0.1:{server.server_port}/index.html',
+             wait_until='domcontentloaded',timeout=30000)
+            page.wait_for_function("""()=>typeof db!=='undefined'&&!!db&&
+             typeof checkNoDuplicateKeysHOME31==='function'&&
+             typeof assertKnownBackupFields==='function'&&
+             typeof readBackupSnapshot==='function'""",timeout=20000)
+            ck('HOME31 exact guard loaded',page.evaluate("typeof checkNoDuplicateKeysHOME31==='function'"))
+            ck('isolated synthetic DB id',page.evaluate("DB_NAME")==='PAE04_HT_STABLE_CANDIDATE_INTEGRATION_SYNTHETIC_SCHEMA1')
+            snapshot=lambda:page.evaluate("async()=>canonical(await readBackupSnapshot())")
+            initial=page.evaluate("async()=>await readBackupSnapshot()")
+            ck('four stores start empty',{k:len(v) for k,v in initial.items()}==
+             {'pressures':0,'medications':0,'intakes':0,'intakeEvents':0})
+            page.evaluate("""async()=>{
+              const now=new Date(),date=dateLocal(now),created=now.toISOString();
+              const p={id:'SYN_HOME31_PRESS_001',systolic:120,diastolic:80,pulse:60,
+                dateTime:date+'T00:01',note:'synthetic only',arm:'right',createdAt:created};
+              const m={id:'SYN_HOME31_MED_001',name:'Синтетический препарат А',
+                dose:'учебная единица',kind:'regular',from:null,to:null,dailyIntakes:1,createdAt:created};
+              validatePressure(p);validateMed(m);
+              await addRecord('pressures',p);await addRecord('medications',m);
+              await changeIntake('marked',{id:'SYN_HOME31_INTAKE_001',
+                medId:m.id,date,takenAtLocal:date+'T00:02',
+                markedAt:created,status:'active',dailySlot:1,reason:'synthetic'});
+              await reload();
+            }""")
+            beforeRows=page.evaluate("async()=>await readBackupSnapshot()")
+            ck('four stores seeded only with fictional values',{k:len(v) for k,v in beforeRows.items()}==
+             {'pressures':1,'medications':1,'intakes':1,'intakeEvents':1})
+            baseline=snapshot()
+            page.locator('.nav-item[data-page="settings"]').click()
+            signed=page.evaluate("async()=>await createBackup()")
+            raw=json.dumps(signed,ensure_ascii=False,separators=(',',':'))
+            def tweak(old,new):
+             if raw.count(old)!=1: raise AssertionError('FIXTURE_ANCHOR '+old[:30])
+             return raw.replace(old,new,1)
+            duplicate_cases=[
+             ('envelope',tweak('"version":3','"version":3,"version":3')),
+             ('pressure',tweak('"systolic":120','"systolic":120,"systolic":121')),
+             ('intake',tweak('"dailySlot":1','"dailySlot":1,"dailySlot":2')),
+             ('escaped_name',tweak('"format":','"f\\u006frmat":"test","format":')),
+            ]
+            serial=0
+            def upload(selector,raw_json,expected):
+             nonlocal_dummy=None
+             global serial
+             serial+=1
+             page.locator('#'+selector).set_input_files({
+               'name':f'HOME31_SYN_{serial}_{selector}.json',
+               'mimeType':'application/json','buffer':raw_json.encode('utf-8')})
+             view='#verify-result' if selector=='verify-file' else '#import-preview'
+             page.wait_for_function("""({view,expected})=>
+               document.querySelector(view)?.textContent.includes(expected)""",
+               arg={'view':view,'expected':expected},timeout=15000)
+             return page.locator(view).inner_text()
+            for label,payload in duplicate_cases:
+             for selector in ('verify-file','import-file'):
+              msg=upload(selector,payload,'DUPLICATE_JSON_KEY')
+              ck(label+' '+selector+' fail closed','DUPLICATE_JSON_KEY' in msg and 'SHA-256 совпадает' not in msg)
+              ck(label+' '+selector+' IndexedDB unchanged',snapshot()==baseline)
+              ck(label+' '+selector+' checkpoint disabled',page.locator('#checkpoint-button').is_disabled())
+              ck(label+' '+selector+' import disabled',page.locator('#import-button').is_disabled())
+              ck(label+' '+selector+' pending import empty',page.evaluate("pendingImport===null"))
+            ck('negative inputs did not download checkpoint',downloads==[])
+            for version in (1,2,3):
+             doc=copy.deepcopy(signed);doc['version']=version
+             if version<3:doc['data'].pop('intakeEvents',None)
+             body={k:v for k,v in doc.items() if k!='sha256'}
+             doc['sha256']=page.evaluate("async body=>await sha256(body)",body)
+             payload=json.dumps(doc,ensure_ascii=False,separators=(',',':'))
+             verified=upload('verify-file',payload,'PASS · SHA-256 совпадает')
+             ck('v'+str(version)+' verified without import','PASS · SHA-256 совпадает' in verified)
+             preview=upload('import-file',payload,'Конфликтов: 0')
+             ck('v'+str(version)+' preview accepted','Конфликтов: 0' in preview)
+             ck('v'+str(version)+' checkpoint not auto-created',
+               page.evaluate("pendingImport!==null&&pendingImport.checkpoint===null"))
+             ck('v'+str(version)+' import disabled',page.locator('#import-button').is_disabled())
+             ck('v'+str(version)+' IndexedDB unchanged',snapshot()==baseline)
+            ck('positive previews did not auto-download',downloads==[])
+            with page.expect_download(timeout=12000) as captured:
+             page.locator('#checkpoint-button').click()
+            ck('manual synthetic checkpoint downloaded',
+             captured.value.suggested_filename.startswith('PAE04-PERSONAL-PREIMPORT-CHECKPOINT-'))
+            ck('manual checkpoint still needs confirmation',
+             page.locator('#import-button').is_disabled() and
+             not page.locator('#checkpoint-ack').is_checked())
+            ck('manual checkpoint IndexedDB unchanged',snapshot()==baseline)
+            ck('no external browser request',external==[])
+            ck('no uncaught page error',js_errors==[])
+            context.close();browser.close();browser=None
+          except Exception as exc:
+           errors.append(type(exc).__name__+': '+str(exc)[:400])
+           traceback.print_exc()
+          finally:
+           if browser is not None:
+            try:browser.close()
+            except Exception:pass
+           if server is not None:
+            server.shutdown();server.server_close()
+           fail=sum(x['status']=='FAIL' for x in checks)
+           status='PASS_SCOPED' if not errors and fail==0 and checks else 'FAIL'
+           report={'checkpoint':'PAE04_HOME31_EXACT_PR19_CHROMIUM_20261124',
+             'status':status,'source_commit':'c3062d2696e602a124fa5992a046bff6606824bf',
+             'app_git_blob':'32a093dffddf254278c46a2a56f35128f45aeb6f',
+             'browser':'Chromium / Playwright Python 1.65.1','synthetic_only':True,
+             'personal_profile_or_adapter_source_read':False,'test_origin':'127.0.0.1',
+             'external_browser_hosts':sorted(set(external)),'page_errors':js_errors,
+             'checks':checks,'errors':errors,
+             'pass':sum(x['status']=='PASS' for x in checks),'fail':fail,
+             'limitations':['Physical iPhone/Safari NOT RUN','Real owner database NOT READ',
+               'No actual import/restore; only file inputs and synthetic checkpoint',
+               'Personal source profile and adapter never fetched']}
+           REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+           print('HOME31_RESULT '+json.dumps({'status':status,'pass':report['pass'],
+             'fail':fail,'errors':errors},ensure_ascii=False),flush=True)
+           sys.exit(0 if status=='PASS_SCOPED' else 1)
+          PY
+      - name: Upload single synthetic HOME31 report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PAE04_HOME31_SYNTHETIC_INGRESS_REPORT
+          path: /tmp/pae04-home31-report.json
+          retention-days: 1
+          if-no-files-found: warn
