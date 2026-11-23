@@ -23,7 +23,7 @@ ROOT=Path(__file__).resolve().parents[2]
 REPORT=ROOT/"qa/cp40/offline_webkit_r1_results"
 BRANCH="refs/heads/sandbox/pae04-approved-ux23-iphone-cp40-20261123-r1"
 PINNED={
-    "site/app.js":"cbc0d3b54dbb6a96e70c4aea370b69d3a86c5f29",
+    "site/app.js":"c1adc5545d175ed2456a18d4febd00c095f423f1",
     "site/home.js":"16f083fdb3fdb4d84a3d6db422cb4d57e232783b",
     "site/styles.css":"317ab104834442516a3ad9e1be9811206e728762",
     "site/index.html":"08b241a615da56297d4982a7ac5a2c36f0c8c0ca",
@@ -217,6 +217,8 @@ def run():
                     check("all-shell-assets-after-restart",
                           offline_sw["cachedCount"],len(FILES))
                     check("cached-status-after-restart",offline_sw["status"],"true")
+                    check("no-false-offline-warning-after-restart",
+                          "офлайн-кэш не включился" not in offline_page.locator("#messages").inner_text())
                     recovered=read_db(offline_page)
                     check("unchanged-4-store-records-offline",recovered,before)
                     check("independent-stored-data-SHA256",
@@ -256,6 +258,8 @@ def run():
                     check("offline-write-SHA-matches",digest(durable),after_sha)
                     check("offline-UI-progress-2-of-2",
                           offline_page.locator("#v232-meds-today .ux23-meds-today-count").inner_text(),"2 / 2")
+                    check("no-false-offline-warning-after-reload",
+                          "офлайн-кэш не включился" not in offline_page.locator("#messages").inner_text())
                     offline_page.screenshot(path=str(REPORT/"CP40_OFFLINE_WK_R1_after_relaunch.png"),
                         full_page=True)
                     check("no-JS-page-errors",ERRORS,[])
