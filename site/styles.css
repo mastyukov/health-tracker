@@ -392,3 +392,41 @@ html[data-appearance="dark"] #page-pressure .ux23-chart-metric-value{color:#e8ee
 @media(max-width:390px){
   #page-meds .v232-kind-button{font-size:11.5px;min-height:76px;padding:9px 3px}
 }
+
+/* CP40 Visual-R2: approved iPhone medicine groups, existing functional controls preserved. */
+#page-meds #v232-meds-today #med-list{
+  border:1px solid #e3e9f2;border-radius:20px;padding:17px 15px;
+  background:#fff;overflow:visible;
+}
+#page-meds .ux23-meds-today-summary{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#page-meds .ux23-meds-today-title{font-size:19px;margin:0;color:#182536}
+#page-meds .ux23-meds-today-count{font-size:19px;color:#182536;font-variant-numeric:tabular-nums;white-space:nowrap}
+#page-meds .ux23-meds-today-progress{width:100%;height:7px;border-radius:8px;overflow:hidden;background:#e8eef5;margin:12px 0 5px}
+#page-meds .ux23-meds-today-fill{display:block;height:100%;border-radius:8px;background:#59A48C;transition:width .15s ease}
+#page-meds .ux23-med-kind-group{padding:14px 0 9px;border-bottom:1px solid #e4e9f1}
+#page-meds .ux23-med-kind-group:last-child{border-bottom:0}
+#page-meds .ux23-med-kind-heading{display:flex;align-items:center;gap:9px;font-size:18px;margin:0 0 10px;color:#182536}
+#page-meds .ux23-med-kind-heading .ui01-kind-icon{margin:0;width:25px;height:25px}
+#page-meds .ux23-med-kind-heading svg{width:24px;height:24px}
+#page-meds .ux23-med-kind-group .med-block{border:0;border-radius:0;background:transparent;box-shadow:none;padding:10px 0;margin:0}
+#page-meds .ux23-med-kind-group .med-block+.med-block{border-top:1px solid #edf1f5}
+#page-meds .ux23-med-kind-group .med-row{padding:0;gap:8px}
+#page-meds .ux23-med-kind-group .med-details{min-width:0}
+#page-meds .ux23-med-kind-group .med-type{display:none}
+#page-meds .ux23-med-kind-group .row-title{font-size:15px;line-height:1.35}
+#page-meds .ux23-med-kind-group .row-subtitle{margin-top:5px}
+#page-meds .ux23-med-advanced{margin-top:8px;border-top:1px solid #f1f3f6;padding-top:5px}
+#page-meds .ux23-med-advanced-title{color:#5d7087;font-size:12px;font-weight:650;cursor:pointer;min-height:44px;display:flex;align-items:center}
+#page-meds .ux23-med-advanced[open] .ux23-med-advanced-title{color:#286cce}
+#page-meds .ux23-med-kind-group .med-schedule-slots{padding-top:8px}
+#page-meds .ux23-med-kind-group .med-schedule-slot{min-height:44px}
+html[data-appearance="dark"] #page-meds #v232-meds-today #med-list{background:#1b2634;border-color:#324155}
+html[data-appearance="dark"] #page-meds .ux23-med-kind-heading,
+html[data-appearance="dark"] #page-meds .ux23-meds-today-title,
+html[data-appearance="dark"] #page-meds .ux23-meds-today-count{color:#e8eef6}
+@media(prefers-color-scheme:dark){
+  html:not([data-appearance]) #page-meds #v232-meds-today #med-list{background:#1b2634;border-color:#324155}
+  html:not([data-appearance]) #page-meds .ux23-med-kind-heading,
+  html:not([data-appearance]) #page-meds .ux23-meds-today-title,
+  html:not([data-appearance]) #page-meds .ux23-meds-today-count{color:#e8eef6}
+}
