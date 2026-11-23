@@ -22,9 +22,9 @@ ROOT=Path(__file__).resolve().parents[2]
 RESULTS=ROOT/"qa"/"cp40"/"visual_results"
 BRANCH="refs/heads/sandbox/pae04-approved-ux23-iphone-cp40-20261123-r1"
 PINNED={
- "site/app.js":"21a1cf58b6aca9718d343b175df7cb3175b12e36",
+ "site/app.js":"b63dbe5d94bba6090c8eb4d6e36229853c7eae34",
  "site/home.js":"2a05af6b8de04cf5d0e125b1e4b73fbe479a716b",
- "site/styles.css":"9014218883eb307cc1cde61b12342ce99969a0e3",
+ "site/styles.css":"b735319db0e89fb3591c6bc3ed8440953248119d",
  "site/home.css":"e49331b5da9c1632f1d4b384ac05bc57506f50f9",
  "site/index.html":"08b241a615da56297d4982a7ac5a2c36f0c8c0ca"
 }
@@ -84,7 +84,7 @@ def run():
             "113 / 72" not in pressure.inner_text())
           check("today-average-calendar-SVG",avg.locator(".ux23-average-icon svg").count()==1)
           check("missing-pulse-not-zero","Пульс не указан" in pressure.inner_text())
-          page.screenshot(path=str(RESULTS/"CP40_VR1_today.png"),full_page=True)
+          page.screenshot(path=str(RESULTS/"CP40_VR2_today.png"),full_page=True)
 
           page.locator('.nav-item[data-page="pressure"]').click()
           head=page.locator("#page-pressure .pressure-chart-panel .v23-segmented").bounding_box()
@@ -95,12 +95,26 @@ def run():
           check("pressure-three-selected-values",
             [x.strip() for x in page.locator(".ux23-chart-metric-value").all_text_contents()]==
             ["118","75","—"])
-          page.screenshot(path=str(RESULTS/"CP40_VR1_pressure.png"),full_page=True)
+          page.screenshot(path=str(RESULTS/"CP40_VR2_pressure.png"),full_page=True)
 
           page.locator('.nav-item[data-page="meds"]').click()
           check("medicine-today-default",
             page.locator(".v232-med-tab[data-med-view='today']").get_attribute("aria-selected")=="true")
-          page.screenshot(path=str(RESULTS/"CP40_VR1_medicines_today.png"),full_page=True)
+          check("medicine-category-groups-count",
+            page.locator("#page-meds .ux23-med-kind-group").count()==3)
+          check("medicine-category-outline-icons",
+            page.locator("#page-meds .ux23-med-kind-heading svg").count()==3)
+          check("medicine-scheduled-only-progress",
+            page.locator("#page-meds .ux23-meds-today-count").inner_text().strip()=="0 / 2")
+          check("medicine-independent-slots",
+            page.locator("#page-meds .ux23-med-kind-group .med-schedule-slot input[type='checkbox']").count()==2)
+          check("medicine-advanced-closed-by-default",
+            page.locator("#page-meds .ux23-med-advanced:not([open])").count()==3)
+          page.locator("#page-meds .ux23-med-advanced summary").first.click()
+          check("medicine-audit-access-preserved",
+            page.locator("#page-meds .ux23-med-advanced[open] .med-record-list").count()==1)
+          page.locator("#page-meds .ux23-med-advanced summary").first.click()
+          page.screenshot(path=str(RESULTS/"CP40_VR2_medicines_today.png"),full_page=True)
           page.locator(".v232-med-tab[data-med-view='history']").click()
           check("history-icon-buttons",
             page.locator("#page-meds .v232-kind-button svg").count()==3)
@@ -111,7 +125,7 @@ def run():
           page.locator("#page-meds .v232-kind-button[data-kind='asNeeded']").click()
           check("PRN-choice-of-period-visible",
             page.locator("#med-history-period").is_visible())
-          page.screenshot(path=str(RESULTS/"CP40_VR1_history_prn.png"),full_page=True)
+          page.screenshot(path=str(RESULTS/"CP40_VR2_history_prn.png"),full_page=True)
 
           page.locator('.nav-item[data-page="overview"]').click()
           page.evaluate("""() => {snapshot.pressures=snapshot.pressures.filter(
@@ -136,12 +150,12 @@ if __name__=="__main__":
     traceback.print_exc()
   finally:
     RESULTS.mkdir(parents=True,exist_ok=True)
-    (RESULTS/"CP40_VISUAL_R1_QA.json").write_text(
+    (RESULTS/"CP40_VISUAL_R2_QA.json").write_text(
       json.dumps({"status":status,"checks":CHECKS,"errors":ERRORS,
         "mode":"SYNTHETIC_IN_MEMORY_NO_INDEXEDDB_WRITES",
         "viewport":"390x844 Chromium","baseline":"CP40 32/32 preserved"},
         ensure_ascii=False,indent=2),encoding="utf-8")
-    print("CP40_VISUAL_R1 "+json.dumps({"status":status,
+    print("CP40_VISUAL_R2 "+json.dumps({"status":status,
       "pass":sum(x["result"]=="PASS" for x in CHECKS),
       "fail":sum(x["result"]=="FAIL" for x in CHECKS),
       "errors":ERRORS},ensure_ascii=False))
