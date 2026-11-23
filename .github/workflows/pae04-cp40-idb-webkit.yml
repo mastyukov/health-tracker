@@ -1,0 +1,49 @@
+name: PAE-04 CP40 IndexedDB WebKit-R1 — synthetic iPhone persistence QA
+on:
+  push:
+    branches:
+      - sandbox/pae04-approved-ux23-iphone-cp40-20261123-r1
+    paths:
+      - qa/cp40/meds_indexeddb_webkit.py
+      - .github/workflows/pae04-cp40-idb-webkit.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pae04-cp40-idb-webkit-only
+  cancel-in-progress: false
+
+jobs:
+  webkit-indexeddb:
+    if: github.repository == 'mastyukov/health-tracker' && github.ref == 'refs/heads/sandbox/pae04-approved-ux23-iphone-cp40-20261123-r1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    container:
+      image: mcr.microsoft.com/playwright/python:v1.65.1-noble
+    env:
+      PAE04_SYNTHETIC_ONLY: 'true'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout pinned sandbox only
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use preinstalled WebKit with matching Playwright Python
+        run: python -m pip install --quiet --disable-pip-version-check 'playwright==1.65.1'
+      - name: Verify sandbox and script syntax
+        run: |
+          set -eu
+          test "$PAE04_SYNTHETIC_ONLY" = "true"
+          test "$GITHUB_REF" = "refs/heads/sandbox/pae04-approved-ux23-iphone-cp40-20261123-r1"
+          python -m py_compile qa/cp40/meds_indexeddb_webkit.py
+      - name: Targeted synthetic WebKit IndexedDB mark, reload, cancel, audit
+        run: python qa/cp40/meds_indexeddb_webkit.py
+      - name: Preserve synthetic-only evidence, no deploy
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pae04-cp40-idb-webkit-r1-synthetic-evidence
+          path: qa/cp40/idb_webkit_r1_results/*
+          if-no-files-found: warn
+          retention-days: 3
